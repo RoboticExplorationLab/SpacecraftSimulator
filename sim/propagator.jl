@@ -50,15 +50,30 @@ ECI_hist[:,1] = eci0
 t1 = time()
 for kk = 1:(length(t_vec)-1)
 
+    # eclipse check
+    r_sun_eci = SD.sun_position(epc_orbital)
+    eclipse = eclipse_check(ECI_hist[1:3,kk], r_sun_eci)
+
+    # atmospheric drag
+    ρ = density_harris_priester(ECI_hist[1:3,kk], r_sun_eci)
+    ecef_Q_eci = SD.rECItoECEF(epc_orbital)
+    a_drag = accel_drag(ECI_hist[:,kk], ρ, params.sc.mass, params.sc.area, params.sc.cd, ecef_Q_eci)
+
     # mag field vector
     B_eci_hist[:,kk] = IGRF13(ECI_hist[1:3,kk],epc_orbital)
 
+    # thruster acceleration
+    u_thruster = zeros(3)
 
-    u = zeros(3)
-    ECI_hist[:,kk+1] =rk4(FODE, epc_orbital, ECI_hist[:,kk], u, dt_orbital)
+    # propagate orbit one step
+    ECI_hist[:,kk+1] =rk4_orbital(FODE, epc_orbital, ECI_hist[:,kk],
+                                  u_thruster + a_drag, dt_orbital)
+
+    # increment the time
     epc_orbital += dt_orbital
 
 end
+
 @show time() - t1
 # @infiltrate
 

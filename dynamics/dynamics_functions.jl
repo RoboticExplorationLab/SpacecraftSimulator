@@ -52,7 +52,8 @@ function FODE_J2(r_eci::Vec)::Vec
 end
 
 
-function rk4(f::Function, t_n::RealorEpoch, x_n::Vec, u::Vec, h::Real)::Vec
+function rk4_orbital(f::Function, t_n::RealorEpoch, x_n::Vec, u::Vec,
+                                                              h::Real)::Vec
     """Runge-Kutta 4th order integration. Epoch for time.
 
     Args:
@@ -271,6 +272,103 @@ function drag_from_atmosphere(r_eci::Vec, v_eci::Vec, mass::Real, epc::Epoch,
     return a_drag_eci
 end
 
+
+function eclipse_and_srp(epc::Epoch, r_eci::Vec, mass::Real,
+                         RTN_Q_ECI::Mat)::Tuple{Bool,Vec}
+    """Eclipse check and SRP acceleration.
+
+    Args:
+        epc: time                            (Epoch)
+        r_eci: position vector eci           (m)
+        mass: s/c mass                       (kg)
+        RTN_Q_ECI: DCM between basis         ()
+
+    Returns:
+        eclipse: bool, true if eclipse       ()
+        a_srp: srp acceleration in RTN       (m/s^2)
+    """
+
+    # get the sun position
+    r_sun_eci = sun_position(epc)
+
+    # normalize sun position
+    e_sun_eci = normalize(r_sun_eci)
+
+    #amount of r_eci in the direction of the sun
+    proj = dot(r_eci,e_sun_eci)
+
+    # if this is positive, we aren't in eclipse
+    if proj > 0
+        eclipse =  false
+    else
+        # part of r_eci orthogonal to sun vector
+        ortho_r_eci = r_eci - proj*e_sun_eci
+
+        # if the spacecraft is outside the shadow of earth
+        if norm(ortho_r_eci)> params.Re
+            eclipse = false
+        else
+            eclipse = true
+        end
+    end
+    return eclipse
+end
+
+
+
+function eclipse_and_srp(epc::Epoch, r_eci::Vec, mass::Real,
+                         RTN_Q_ECI::Mat)::Tuple{Bool,Vec}
+    """Eclipse check and SRP acceleration.
+
+    Args:
+        epc: time                            (Epoch)
+        r_eci: position vector eci           (m)
+        mass: s/c mass                       (kg)
+        RTN_Q_ECI: DCM between basis         ()
+
+    Returns:
+        eclipse: bool, true if eclipse       ()
+        a_srp: srp acceleration in RTN       (m/s^2)
+    """
+
+    # get the sun position
+    r_sun_eci = sun_position(epc)
+
+    # normalize sun position
+    e_sun_eci = normalize(r_sun_eci)
+
+    #amount of r_eci in the direction of the sun
+    proj = dot(r_eci,e_sun_eci)
+
+    # if this is positive, we aren't in eclipse
+    if proj > 0
+        eclipse =  false
+    else
+        # part of r_eci orthogonal to sun vector
+        ortho_r_eci = r_eci - proj*e_sun_eci
+
+        # if the spacecraft is outside the shadow of earth
+        if norm(ortho_r_eci)> params.Re
+            eclipse = false
+        else
+            eclipse = true
+        end
+    end
+
+    # if params.srp is set to true, and the spacecraft is not in eclipse
+    if params.srp && !eclipse
+        # SRP force vector
+        # normalize(r_eci - r_sun_eci) is the unit vector from sun to s/c
+        F_srp = params.P_sun*params.cr*params.A_srp*(normalize(r_eci - r_sun_eci))
+
+        # SRP acceleration vector in rtn
+        return eclipse, RTN_Q_ECI*F_srp/mass
+    else
+        # otherwise return 0 for a_srp_rtn
+        return eclipse, zeros(3)
+    end
+
+end
 
 function eclipse_and_srp(epc::Epoch, r_eci::Vec, mass::Real,
                          RTN_Q_ECI::Mat)::Tuple{Bool,Vec}

@@ -35,7 +35,41 @@ function IGRF13(r_eci,epc)
 end
 
 
+function eclipse_check(x::Array{<:Real, 1}, r_sun::Array{<:Real, 1})
+    """
+    Computes the illumination fraction of a satellite in Earth orbit using a
+    cylindrical Earth shadow model.
 
+    Arguments:
+    - `x::Array{<:Real, 1}`: Satellite Cartesean state in the inertial
+                             reference frame [m; m/s]
+    - `r_sun::Array{<:Real, 1}`: Position of sun in inertial frame.
+
+    Return:
+    - `nu::Float64`: Illumination fraction (0 <= nu <= 1). nu = 0 means
+                     spacecraft in complete shadow, nu = 1 mean spacecraft
+                     fully illuminated by sun.
+    References:
+    1. O. Montenbruck, and E. Gill, Satellite Orbits: Models, Methods
+                                    and Applications_, 2012, p.80-83.
+    """
+    # Satellite position ECI
+    r = x[1:3]
+
+    # Sun-direction unit-vector
+    e_sun = r_sun / norm(r_sun)
+
+    # Projection of spacecraft position
+    s = dot(r, e_sun)
+
+    # Compute illumination
+    nu = true
+    if s/norm(s) >= 1.0 || norm(r - s*e_sun) > R_EARTH
+        nu = false
+    end
+
+    return nu
+end
 
 # function ecef_Q_ned_mat(longitude,latitude)
 #

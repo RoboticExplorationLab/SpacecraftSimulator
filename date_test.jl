@@ -90,7 +90,7 @@ longitude,latitude,altitude = SD.sECEFtoGEOC(r_ecef,use_degrees=false)
 B_ned_nT = igrf(2017.12313, norm(r_ecef), latitude, longitude, Val(:geocentric))
 
 
-B_eci_nT = eci_Q_ecef*ecef_Q_ned*B_ned_nT
+# B_eci_nT = eci_Q_ecef*ecef_Q_ned*B_ned_nT
 
 
 function ecef_Q_ned_mat(longitude,latitude)
@@ -106,6 +106,37 @@ function ecef_Q_ned_mat(longitude,latitude)
 
     return ecef_Q_ned
 end
+
+
+
+
+
+
+r_sun = sun_position(epc)
+
+r_sun = norm(r_sun)*[1;0;0]
+# Satellite inertial position
+r = r_eci
+r = norm(r_eci)*[0;1;0]
+
+# Sun-direction unit-vector
+e_sun = r_sun / norm(r_sun)
+
+# Projection of spacecraft position
+s = dot(r, e_sun)
+
+# Compute illumination
+nu = 0.0
+if s/norm(s) >= 1.0 || norm(r - s*e_sun) > R_EARTH
+    nu = 1.0
+end
+
+return nu
+
+
+
+
+
 
 # igrf(2017.12313, alt, lat, long, Val(:geodetic))
 # use_degrees = false

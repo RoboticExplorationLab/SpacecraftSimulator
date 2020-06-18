@@ -12,13 +12,17 @@ J = [1.959e-4 2016.333e-9 269.176e-9;
 
 # spacecraft mass
 sc_mass = 177.808e-3
+sc_area = .01
+sc_cd = 1.5
+
+sc = (mass = sc_mass, area = sc_area, cd = sc_cd)
 
 # spherical harmonic expansion
 grav_deg = 6
 grav_order = 6
 
 
-global params = (J=J, sc_mass = sc_mass, grav_deg = grav_deg, grav_order = grav_order)
+global params = (J=J, sc=sc, grav_deg = grav_deg, grav_order = grav_order)
 
 
 # line1 = "1 35933U 09051C   19315.45643387  .00000096  00000-0  32767-4 0  9991"
