@@ -8,7 +8,7 @@ include(joinpath(dirname(@__DIR__),"common/types.jl"))
 """Dynamics functions that are used in the propagator."""
 
 
-function FODE(eci_state::Vec,t::Epoch)::Vec
+function FODE(epc::Epoch,eci_state::Vec,u::Vec)::Vec
 
     # unpack state
     r_eci = eci_state[1:3]
@@ -18,14 +18,16 @@ function FODE(eci_state::Vec,t::Epoch)::Vec
     # spherical harmonic gravity stuff
 
     # ECI ECEF stuff
-    ECEF_Q_ECI = SD.rECItoECEF(epc)
-
-    # acceleration
-    a_eci = SD.accel_gravity(r_eci,ECEF_Q_ECI,params.spherical_deg,
-                                              params.spherical_order)
+    # ECEF_Q_ECI = SD.rECItoECEF(epc)
+    #
+    # # acceleration
+    # a_eci = SD.accel_gravity(r_eci,ECEF_Q_ECI,params.grav_deg,
+    #                                           params.grav_order) + u
 
     # J2 only
-    # a_eci = FODE_J2(r_eci)
+    a_eci = FODE_J2(r_eci) + u
+    # @infiltrate
+    # error()
 
     return [v_eci;a_eci]
 end
@@ -68,6 +70,8 @@ function rk4(f::Function, t_n::RealorEpoch, x_n::Vec, u::Vec, h::Real)::Vec
     k2 = h*f(t_n+h/2,x_n+k1/2,u)
     k3 = h*f(t_n+h/2,x_n+k2/2,u)
     k4 = h*f(t_n+h,x_n+k3,u)
+
+    # @infiltrate
     return (x_n + (1/6)*(k1+2*k2+2*k3 + k4))
 end
 
