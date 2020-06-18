@@ -9,7 +9,7 @@ include(joinpath(dirname(@__DIR__),"common/types.jl"))
 include(joinpath(dirname(@__DIR__),"common/basis_conversions.jl"))
 include(joinpath(dirname(@__DIR__),"common/misc_math_functions.jl"))
 include(joinpath(dirname(@__DIR__),"dynamics/dynamics_functions.jl"))
-
+include(joinpath(dirname(@__DIR__),"environment/mag_field.jl"))
 
 function driver()
 
@@ -36,26 +36,26 @@ eci0 = sOSCtoCART(oe0, use_degrees=false)
 # timing stuff
 epc_orbital = SD.Epoch("2018-12-01 16:22:19.0 GPS")
 dt_orbital = 10.0
-tf = (24*3600)*10
+tf = (24*3600)*.1
 t_vec = 0:dt_orbital:tf
 
 # pre-allocate
 ECI_hist = zeros(6,length(t_vec))
-B_eci_hist = zeros(3,length(t_vec))
+B_eci_hist = zeros(3,length(t_vec)-1)
 
 # initial conditions
 ECI_hist[:,1] = eci0
 
 # main loop
 t1 = time()
-for k = 1:(length(t_vec)-1)
+for kk = 1:(length(t_vec)-1)
 
-
-    B_eci_hist[:,k] =
+    # mag field vector
+    B_eci_hist[:,kk] = IGRF13(ECI_hist[1:3,kk],epc_orbital)
 
 
     u = zeros(3)
-    ECI_hist[:,k+1] =rk4(FODE, epc_orbital, ECI_hist[:,k], u, dt_orbital)
+    ECI_hist[:,kk+1] =rk4(FODE, epc_orbital, ECI_hist[:,kk], u, dt_orbital)
     epc_orbital += dt_orbital
 
 end
@@ -63,6 +63,10 @@ end
 # @infiltrate
 
 plot(vec(ECI_hist[1,:]),vec(ECI_hist[2,:]),vec(ECI_hist[3,:]))
+
+plot(vec(B_eci_hist[1,:]))
+plot!(vec(B_eci_hist[2,:]))
+plot!(vec(B_eci_hist[3,:]))
 
 end
 

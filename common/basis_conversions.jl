@@ -11,7 +11,7 @@ function ecef_Q_ned_mat(longitude,latitude)
 
     ecef_Q_ned = [-sin(ϕ)*cos(λ)  -sin(λ)  -cos(ϕ)*cos(λ);
                   -sin(ϕ)*sin(λ)   cos(λ)  -cos(ϕ)*sin(λ);
-                   cos(ϕ)          0       -sin(ϕ)]
+                   cos(ϕ)          0.0     -sin(ϕ)]
 
     return ecef_Q_ned
 end
