@@ -6,42 +6,6 @@ include(joinpath(dirname(@__DIR__),"common/types.jl"))
 """Miscellaneous math functions"""
 
 
-function create_ellipse(height::Number, width::Number, xc::Number,
-            yc::Number)::Tuple{Vec,Vec}
-    """Creates x and y coordinates for an ellipse of given size.
-
-    Args:
-        height: total height :: Number
-        width:  total width :: Number
-        xc:     x coordinate of ellipse center :: Number
-        yc:     y coordinate of ellipse center :: Number
-
-    Returns:
-        x_hist: vector of x's :: AbstractArray{Float64,1}
-        y_hist: vector of y's :: AbstractArray{Float64,1}
-    """
-
-    # get vec of angles
-    theta_vec = 0:.01:2 * pi
-
-    # open up arrays for x and y
-    x_hist = zeros(length(theta_vec))
-    y_hist = zeros(length(theta_vec))
-
-    # populate with values (offset π/2 so it starts at [0,-ymax])
-    for i = 1:length(theta_vec)
-        x_hist[i] = cos(theta_vec[i] - pi / 2)
-        y_hist[i] = sin(theta_vec[i] - pi / 2)
-    end
-
-    # scale to height and width, and move to have center at (xc,yc)
-    x_hist = x_hist * width / 2 .+ xc
-    y_hist = y_hist * height / 2 .+ yc
-
-    return x_hist, y_hist
-end
-
-
 function wrap_to_2pi(theta::Real)::Real
     """Takes an angle theta and returns the same angle theta ∈ [0,2π].
 
@@ -117,7 +81,7 @@ function vec_from_skew(mat::Mat)::Vec
         3x1 vector
     """
 
-    return vec([mat[3, 2]; mat[1, 3]; mat[2, 1]])
+    return [mat[3, 2]; mat[1, 3]; mat[2, 1]]
 end
 
 function skew_expm(B::Mat)::Mat
@@ -223,4 +187,65 @@ function active_rotation_axis_angle(axis::Vec,theta::Real,vector::Vec)::Vec
     end
 
     return skew_expm(skew_from_vec(theta*axis))*vector
+end
+
+
+function ⊙(q1, q2)
+    """Quaternion multiplication, hamilton product, scalar last"""
+
+    v1 = q1[1:3]
+    s1 = q1[4]
+    v2 = q2[1:3]
+    s2 = q2[4]
+
+    return [(s1 * s2 - dot(v1, v2));(s1 * v2 + s2 * v1 + cross(v1, v2))]
+
+end
+
+function dcm_from_q(q)
+    """DCM from quaternion, hamilton product, scalar last"""
+
+    # pull our the parameters from the quaternion
+    q1,q2,q3,q4 = q
+
+    # DCM
+    Q = [(2*q1^2+2*q4^2-1)   2*(q1*q2 - q3*q4)   2*(q1*q3 + q2*q4);
+          2*(q1*q2 + q3*q4)  (2*q2^2+2*q4^2-1)   2*(q2*q3 - q1*q4);
+          2*(q1*q3 - q2*q4)   2*(q2*q3 + q1*q4)  (2*q3^2+2*q4^2-1)]
+
+    return Q
+end
+
+function qconj(q)
+    """Conjugate of the quaternion (scalar last)"""
+
+    return [-q[1:3]; q[4]]
+end
+
+function phi_from_q(q)
+    """axis angle from quaternion (scalar last)"""
+
+    v = q[1:3]
+    s = q[4]
+    normv = norm(v)
+
+    if normv == 0.0
+        return zeros(3)
+    else
+        r = v / normv
+        θ = 2 * atan(normv, s)
+        return r * θ
+    end
+end
+
+function q_from_phi(ϕ)
+    """Quaternion from axis angle vector, scalar last"""
+
+    θ = norm(ϕ)
+    if abs(θ) < 0.0000000001
+        return [0; 0; 0; 1.0]
+    else
+        r = ϕ / θ
+        return [r * sin(θ / 2); cos(θ / 2)]
+    end
 end

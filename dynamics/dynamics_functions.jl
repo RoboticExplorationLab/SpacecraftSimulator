@@ -26,8 +26,7 @@ function FODE(epc::Epoch,eci_state::Vec,u::Vec)::Vec
 
     # J2 only
     a_eci = FODE_J2(r_eci) + u
-    # @infiltrate
-    # error()
+
 
     return [v_eci;a_eci]
 end
@@ -76,7 +75,70 @@ function rk4_orbital(f::Function, t_n::RealorEpoch, x_n::Vec, u::Vec,
     return (x_n + (1/6)*(k1+2*k2+2*k3 + k4))
 end
 
+function rk4_attitude(f::Function, t_n::RealorEpoch, x_n::Vec, m::Vec,
+                                    B_eci_nT::Vec, τ::Vec, h::Real)::Vec
+    """Runge-Kutta 4th order integration. Epoch for time.
 
+    Args:
+        ODE:                f(t,x,u)        | function
+        initial time:       t_n             | epoch or float64
+        initial cond:       x_n             | vec
+        magnetic dipole:    m               | A⋅m²
+        mag field vector:   B_eci_nT        | nT (eci)
+        external torque:    τ               | N⋅m
+        step size:          h               | s
+    Returns:
+        x_{n+1}
+    """
+
+    k1 = h*f(t_n,x_n,m,B_eci_nT,τ)
+    k2 = h*f(t_n+h/2, x_n+k1/2, m, B_eci_nT, τ)
+    k3 = h*f(t_n+h/2, x_n+k2/2, m, B_eci_nT, τ)
+    k4 = h*f(t_n+h, x_n+k3, m, B_eci_nT, τ)
+
+    # @infiltrate
+    return (x_n + (1/6)*(k1+2*k2+2*k3 + k4))
+end
+
+function spacecraft_eom(t, x, m, B_eci_nT, τ)
+    """Spacecraft equations of motion.
+
+    Args:
+        t: time (epoch)
+        x: state
+            - quaternion (scalar last) ᴺqᴮ
+            - angular velocity of the sc (rad/s, expressed in body)
+        m: magnetic moment control (A⋅m^2)
+        B_eci_nT: magnetic field in ECI (nT)
+        τ: external torque (n⋅m^2)
+
+    Returns:
+        xdot: state derivative
+
+    """
+    # @infiltrate
+    # error()
+    # unpack state
+    ᴺqᴮ = x[1:4]
+    ᴺωᴮ = x[5:7]
+    J = params.sc.J
+    invJ = params.sc.invJ
+
+    # magnetic field in the body frame
+    ᴮQᴺ = transpose(dcm_from_q(ᴺqᴮ))
+    B_body_T = ᴮQᴺ*B_eci_nT*1e-9
+
+    # magnetic moment
+    magnetic_moment = cross(m,B_body_T)
+
+    # quaternion kinematics
+    ᴺq̇ᴮ = 0.5 * ᴺqᴮ ⊙ [(ᴺωᴮ); 0.0]
+
+    # angular acceleration
+    ᴺαᴮ = invJ*(τ + magnetic_moment - ᴺωᴮ × (J * ᴺωᴮ) )
+
+    return [ᴺq̇ᴮ; ᴺαᴮ]
+end
 
 function EOE_eom(epc::Epoch, x::Vec, u::Vec,thruster_on::Bool)::Vec
     """Equations of motion for equinoctial elements in 2-body problem.
