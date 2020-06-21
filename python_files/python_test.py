@@ -3,4 +3,4 @@ import numpy as np
 
 def foo(inn):
 
-    return inn*2
+    return np.array([1*inn,2*inn,3*inn])
