@@ -137,6 +137,8 @@ function spacecraft_eom(t, x, m, B_eci_nT, τ)
     # angular acceleration
     ᴺαᴮ = invJ*(τ + magnetic_moment - ᴺωᴮ × (J * ᴺωᴮ) )
 
+    @infiltrate
+
     return [ᴺq̇ᴮ; ᴺαᴮ]
 end
 

@@ -1,4 +1,6 @@
 import numpy as np
 
-def testfx(in):
-    return in*2
+
+def foo(inn):
+
+    return inn*2

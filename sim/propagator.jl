@@ -1,7 +1,7 @@
 using LinearAlgebra, SatelliteDynamics, SatelliteToolbox, Plots
 
 using Infiltrator
-
+using StaticArrays
 const SD = SatelliteDynamics
 const ST = SatelliteToolbox
 
@@ -108,16 +108,16 @@ end
 @show time() - t1
 # @infiltrate
 
-plot(vec(orbital_state[1,:]),vec(orbital_state[2,:]),vec(orbital_state[3,:]))
-
-plot(vec(B_orbital_state[1,:]))
-plot!(vec(B_orbital_state[2,:]))
-plot!(vec(B_orbital_state[3,:]))
-
-# @infiltrate
-plot(t_vec_attitude,vec(attitude_state[5,:]))
-plot!(t_vec_attitude,vec(attitude_state[6,:]))
-plot!(t_vec_attitude,vec(attitude_state[7,:]),xticks = 0:1:10)
+# plot(vec(orbital_state[1,:]),vec(orbital_state[2,:]),vec(orbital_state[3,:]))
+#
+# plot(vec(B_orbital_state[1,:]))
+# plot!(vec(B_orbital_state[2,:]))
+# plot!(vec(B_orbital_state[3,:]))
+#
+# # @infiltrate
+# plot(t_vec_attitude,vec(attitude_state[5,:]))
+# plot!(t_vec_attitude,vec(attitude_state[6,:]))
+# plot!(t_vec_attitude,vec(attitude_state[7,:]),xticks = 0:1:10)
 
 end
 
