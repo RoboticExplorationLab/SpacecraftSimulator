@@ -3,22 +3,22 @@ sc_properties:
     - [1.959e-4, 2016.333e-9, 269.176e-9]    # kg⋅m²
     - [2016.333e-9, 1.999e-4, 2318.659e-9]   # kg⋅m²
     - [269.176e-9, 2318.659e-9, 1.064e-4]    # kg⋅m²
-  mass: 177.808e-3                           # kg
-  area: .01                                  # m²
-  cd: 1.5                                    # ()
+  mass:  177.808e-3                          # kg
+  area:  0.01                                # m²
+  cd:    1.5                                 # ()
   max_dipoles: [8.8e-3,1.373e-2,8.2e-3]      # A⋅m²
 
 gravity:
   spherical_harmonic_gravity_bool: true      # ()
-  gravity_order: 6                           # ()
+  gravity_order:  6                          # ()
   gravity_degree: 6                          # ()
 
 environment:
-  drag_bool: true                            # ()
-  srp_bool: true                             # ()
-  gravity_gradient_bool: true                # ()
-  sun_3rd_body_bool: false                   # ()
-  moon_3rd_body_bool: false                  # ()
+  drag_bool:              true               # ()
+  srp_bool:               true               # ()
+  gravity_gradient_bool:  true               # ()
+  sun_3rd_body_bool:      false              # ()
+  moon_3rd_body_bool:     false              # ()
 
 initial_orbital_elements:
   sma:  7.082921757336547e6                  # m
@@ -34,7 +34,7 @@ initial_attitude_conditions:
 
 propagator_parameters:
   epoch: "2018-12-01 16:22:19.0 GPS"         # Epoch (SatelliteDynamics)
-  dt_orbital: 10.0                           # sec
-  dt_attitude: .05                           # sec
-  dt_controller: .1                          # sec
-  final_time_days: .1                       # days
+  dt_orbital:      10.0                      # sec
+  dt_attitude:     0.05                      # sec
+  dt_controller:   0.1                       # sec
+  final_time_days: 0.1                       # days

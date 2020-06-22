@@ -19,6 +19,7 @@ function sim_driver(path_to_yaml)
 
 params,initial_conditions, time_params = config(path_to_yaml)
 
+global params 
 # a = 7.082921757336547e6
 # e = 0.00069140
 # i = deg2rad(98.60090000)
