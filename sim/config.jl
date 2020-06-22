@@ -9,7 +9,8 @@ const ST = SatelliteToolbox
 # J = [1.959e-4 2016.333e-9 269.176e-9;
 #     2016.333e-9 1.999e-4 2318.659e-9;
 #     269.176e-9 2318.659e-9 1.064e-4]
-J = diagm([1;2;3.0])
+J = [6400 -76.4 -25.6;-76.4 4730 -40;-25.6 -40 8160]
+# J = diagm([1;2;3.0])
 invJ = inv(J)
 
 # spacecraft mass
@@ -19,7 +20,7 @@ sc_cd = 1.5
 
 max_dipoles = [8.8e-3;1.373e-2;8.2e-3] #amps
 
-sc = (mass = sc_mass, area = sc_area, cd = sc_cd,J=J,invJ=invJ)
+sc = (mass = sc_mass, area = sc_area, cd = sc_cd,J=J,invJ=invJ,max_dipoles = max_dipoles)
 
 # spherical harmonic expansion
 grav_deg = 6

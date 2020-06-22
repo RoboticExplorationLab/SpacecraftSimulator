@@ -96,8 +96,10 @@ function rk4_attitude(f::Function, t_n::RealorEpoch, x_n::Vec, m::Vec,
     k3 = h*f(t_n+h/2, x_n+k2/2, m, B_eci_nT, τ)
     k4 = h*f(t_n+h, x_n+k3, m, B_eci_nT, τ)
 
+    x_np1 = (x_n + (1/6)*(k1+2*k2+2*k3 + k4));
+    x_np1[1:4] = normalize(x_np1[1:4])
     # @infiltrate
-    return (x_n + (1/6)*(k1+2*k2+2*k3 + k4))
+    return x_np1
 end
 
 function spacecraft_eom(t, x, m, B_eci_nT, τ)
@@ -126,7 +128,7 @@ function spacecraft_eom(t, x, m, B_eci_nT, τ)
 
     # magnetic field in the body frame
     ᴮQᴺ = transpose(dcm_from_q(ᴺqᴮ))
-    B_body_T = ᴮQᴺ*B_eci_nT*1e-9
+    B_body_T = ᴮQᴺ*B_eci_nT
 
     # magnetic moment
     magnetic_moment = cross(m,B_body_T)
@@ -137,7 +139,7 @@ function spacecraft_eom(t, x, m, B_eci_nT, τ)
     # angular acceleration
     ᴺαᴮ = invJ*(τ + magnetic_moment - ᴺωᴮ × (J * ᴺωᴮ) )
 
-    @infiltrate
+    # @infiltrate
 
     return [ᴺq̇ᴮ; ᴺαᴮ]
 end

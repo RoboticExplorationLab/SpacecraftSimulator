@@ -31,7 +31,7 @@ function IGRF13(r_eci,epc)
     # conver to eci
     B_eci_nT = eci_Q_ecef*ecef_Q_ned*B_ned_nT
 
-    return B_eci_nT
+    return B_eci_nT*1e-9
 end
 
 
