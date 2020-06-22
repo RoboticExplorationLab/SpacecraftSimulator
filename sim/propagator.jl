@@ -10,12 +10,14 @@ include(joinpath(dirname(@__DIR__),"common/basis_conversions.jl"))
 include(joinpath(dirname(@__DIR__),"common/misc_math_functions.jl"))
 include(joinpath(dirname(@__DIR__),"dynamics/dynamics_functions.jl"))
 include(joinpath(dirname(@__DIR__),"environment/mag_field.jl"))
-
-function driver()
-
-# load in config
+include(joinpath(dirname(@__DIR__),"bdot.jl"))
 include(joinpath(dirname(@__DIR__),"sim/config.jl"))
 
+function sim_driver(path_to_yaml)
+
+# load in config
+
+params,initial_conditions, time_params = config(path_to_yaml)
 
 # a = 7.082921757336547e6
 # e = 0.00069140
@@ -23,37 +25,36 @@ include(joinpath(dirname(@__DIR__),"sim/config.jl"))
 # Ω = deg2rad(127.6424)
 # ω= deg2rad(92.0098)
 # M = deg2rad(268.189)
-a = 6.7780e6
-e = 0
-i = .6102
-Ω = 1.4175
-ω= deg2rad(92.0098)
-M = 2.088
+# a = 6.7780e6
+# e = 0
+# i = .6102
+# Ω = 1.4175
+# ω= deg2rad(92.0098)
+# M = 2.088
 
 # Declare initial state in terms of osculating orbital elements
-oe0 = [a,e,i,Ω,ω,M]
+# oe0 = [a,e,i,Ω,ω,M]
 
 # Convert osculating elements to Cartesian states
-eci0 = sOSCtoCART(oe0, use_degrees=false)
+# eci0 = sOSCtoCART(oe0, use_degrees=false)
 
 # r_eci0 = eci0[1:3]
 # v_eci0 = eci0[4:6]
 
 # timing stuff
-epc_orbital = SD.Epoch("2018-12-01 16:22:19.0 GPS")
-epc_orbital = SD.Epoch("2011-05-10 04:56:19.0 GPS")
-dt_orbital = 10.0
-dt_attitude = .01
-dt_controller = .1
+epc_orbital = initial_conditions.epc_orbital
+dt_orbital = time_params.dt_orbital
+dt_attitude = time_params.dt_attitude
+dt_controller = time_params.dt_controller
 
 # this takes care of the sample ratio
 controller_sample_ratio = Int(dt_controller/dt_attitude)
 
 # time vector stuff
-tf = (24*3600)*.1
-t_vec_orbital = 0:dt_orbital:tf
-inner_loop_t_vec = 0:dt_attitude:dt_orbital
-t_vec_attitude = 0:dt_attitude:(t_vec_orbital[end]+dt_orbital-dt_attitude)
+tf = time_params.tf
+t_vec_orbital = time_params.t_vec_orbital
+inner_loop_t_vec = time_params.inner_loop_t_vec
+t_vec_attitude = time_params.t_vec_attitude
 
 # pre-allocate
 orbital_state = zeros(6,length(t_vec_orbital))
@@ -61,12 +62,13 @@ attitude_state = zeros(7,Int(length(t_vec_orbital)*dt_orbital*(1/dt_attitude)))
 B_eci = zeros(3,length(t_vec_orbital)-1)
 
 # initial conditions
-orbital_state[:,1] = eci0
-q0 = [0;0;0;1]
-# ω0 = [.2;7;.2]
-ω0 = deg2rad(360)*normalize(randn(3))
-ω0 = [.01;.01;.01]
-attitude_state[:,1] = [q0;ω0]
+orbital_state[:,1] = initial_conditions.eci_rv_0
+# q0 = [0;0;0;1]
+# # ω0 = [.2;7;.2]
+# ω0 = deg2rad(270)*normalize(randn(3))
+# ω0 = [.01;.01;.01]
+attitude_state[:,1] = [initial_conditions.ᴺqᴮ0;
+                       initial_conditions.ω0]
 
 # main loop
 t1 = time()
@@ -97,27 +99,15 @@ for kk = 1:(length(t_vec_orbital)-1)
         # magnetic field vector in ECI (nT)
         B_eci_T = B_eci[:,kk]
 
-        # magnetic moment (control law)
-        # m = zeros(3)
-        q = attitude_state[1:4,index_n]
-        n_Q_b = dcm_from_q(q)
-        ω = attitude_state[5:7,index_n]
-
-        bdot = -cross(ω,n_Q_b'*B_eci_T)
-
-        # m = -.5*params.sc.max_dipoles .* sign.(bdot)
-
-
-        m = -5*bdot/norm(B_eci_T)*1e4
-        # @show m
+        # Bdot Control law
+        m = bdot_control_law(attitude_state[1:4,index_n],
+                             attitude_state[5:7,index_n],
+                             params.sc.max_dipoles,
+                             B_eci_T,
+                             eclipse)
 
         # disturbance torques
         τ = zeros(3)
-
-
-        # @infiltrate
-        # error()
-
 
         # update the attitude with RK4
         attitude_state[:,index_n+1] =rk4_attitude(spacecraft_eom, epc_orbital, attitude_state[:,index_n], m, B_eci_T, τ, dt_attitude)
@@ -152,5 +142,5 @@ plot!(t_vec_attitude,vec(attitude_state[7,:]),xticks = 0:1:100)
 
 end
 
-
-driver()
+path_to_yaml = "sim/config.yml"
+sim_driver(path_to_yaml)
