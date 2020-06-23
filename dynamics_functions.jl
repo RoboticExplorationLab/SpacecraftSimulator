@@ -2,7 +2,7 @@ using LinearAlgebra, SatelliteDynamics
 const SD = SatelliteDynamics
 
 # load in data types
-include(joinpath(dirname(@__DIR__),"common/types.jl"))
+# include(joinpath(dirname(@__DIR__),"common/types.jl"))
 
 
 """Dynamics functions that are used in the propagator."""

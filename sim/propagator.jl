@@ -5,19 +5,19 @@ using StaticArrays
 const SD = SatelliteDynamics
 const ST = SatelliteToolbox
 
-# load in julia functions
-include(joinpath(dirname(@__DIR__),"common/types.jl"))
-include(joinpath(dirname(@__DIR__),"common/basis_conversions.jl"))
-include(joinpath(dirname(@__DIR__),"common/misc_math_functions.jl"))
-include(joinpath(dirname(@__DIR__),"dynamics/dynamics_functions.jl"))
-include(joinpath(dirname(@__DIR__),"environment/mag_field.jl"))
-include(joinpath(dirname(@__DIR__),"bdot.jl"))
-include(joinpath(dirname(@__DIR__),"sim/config.jl"))
 
-# load in python functions
-include(joinpath(dirname(@__DIR__),"python_files/load_python_files.jl"))
+# load in the julia and python functions
+ss_sim_path =  dirname(dirname(@__FILE__))
+include(joinpath(ss_sim_path,"load_julia_functions.jl"))
+
 
 function sim_driver(path_to_yaml)
+"""This function runs an orbital and attitude simulation based on the specified
+configuration YAML file.
+
+Args:
+    path_to_yaml: path from SpacecraftSimulation directory to the yaml
+"""
 
 # load in config from the given path
 params,initial_conditions, time_params = config(path_to_yaml)
@@ -58,7 +58,6 @@ for kk = 1:(length(t_vec_orbital)-1)
     r_sun_eci = SD.sun_position(epc_orbital)
     eclipse = eclipse_check(orbital_state[1:3,kk], r_sun_eci)
 
-    @show eclipse
     # atmospheric drag
     ρ = density_harris_priester(orbital_state[1:3,kk], r_sun_eci)
     ecef_Q_eci = SD.rECItoECEF(epc_orbital)

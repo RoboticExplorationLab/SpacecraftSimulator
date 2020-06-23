@@ -2,12 +2,12 @@
 
 using PyCall
 
-include(joinpath(dirname(@__DIR__),"common/types.jl"))
-include(joinpath(dirname(@__DIR__),"common/basis_conversions.jl"))
-include(joinpath(dirname(@__DIR__),"common/misc_math_functions.jl"))
-include(joinpath(dirname(@__DIR__),"dynamics/dynamics_functions.jl"))
-include(joinpath(dirname(@__DIR__),"environment/mag_field.jl"))
-include(joinpath(dirname(@__DIR__),"bdot.jl"))
+# include(joinpath(dirname(@__DIR__),"common/types.jl"))
+# include(joinpath(dirname(@__DIR__),"common/basis_conversions.jl"))
+# include(joinpath(dirname(@__DIR__),"common/misc_math_functions.jl"))
+# include(joinpath(dirname(@__DIR__),"dynamics/dynamics_functions.jl"))
+# include(joinpath(dirname(@__DIR__),"environment/mag_field.jl"))
+# include(joinpath(dirname(@__DIR__),"bdot.jl"))
 
 if PyVector(pyimport("sys")."path")[2] != "python_files"
     pushfirst!(PyVector(pyimport("sys")."path"), "")

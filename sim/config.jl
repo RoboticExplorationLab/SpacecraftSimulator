@@ -8,7 +8,7 @@ const ST = SatelliteToolbox
 function config(path_to_config_yaml)
       # load in the config.yml
       # data = YAML.load(open(joinpath(dirname(@__DIR__),"sim/config.yml")))
-      data = YAML.load(open(joinpath(dirname(@__DIR__),path_to_config_yaml)))
+      data = YAML.load(open(joinpath(dirname(dirname(@__FILE__)),path_to_config_yaml)))
 
       # break it into the sections
       sc_properties = data["sc_properties"]
