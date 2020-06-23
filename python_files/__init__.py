@@ -1,6 +1,7 @@
 
 
 from python_test import foo
+from python_test import bdot_control_law
 
 
 def test1():
@@ -14,4 +15,4 @@ def test2():
     return 2
 
 
-__all__ = [test1, test2, foo]
+__all__ = [test1, test2, foo, bdot_control_law]

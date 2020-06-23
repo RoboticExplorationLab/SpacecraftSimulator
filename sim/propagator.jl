@@ -5,6 +5,7 @@ using StaticArrays
 const SD = SatelliteDynamics
 const ST = SatelliteToolbox
 
+# load in julia functions
 include(joinpath(dirname(@__DIR__),"common/types.jl"))
 include(joinpath(dirname(@__DIR__),"common/basis_conversions.jl"))
 include(joinpath(dirname(@__DIR__),"common/misc_math_functions.jl"))
@@ -13,34 +14,14 @@ include(joinpath(dirname(@__DIR__),"environment/mag_field.jl"))
 include(joinpath(dirname(@__DIR__),"bdot.jl"))
 include(joinpath(dirname(@__DIR__),"sim/config.jl"))
 
+# load in python functions
+include(joinpath(dirname(@__DIR__),"python_files/load_python_files.jl"))
+
 function sim_driver(path_to_yaml)
 
-# load in config
-
+# load in config from the given path
 params,initial_conditions, time_params = config(path_to_yaml)
-
-global params 
-# a = 7.082921757336547e6
-# e = 0.00069140
-# i = deg2rad(98.60090000)
-# Ω = deg2rad(127.6424)
-# ω= deg2rad(92.0098)
-# M = deg2rad(268.189)
-# a = 6.7780e6
-# e = 0
-# i = .6102
-# Ω = 1.4175
-# ω= deg2rad(92.0098)
-# M = 2.088
-
-# Declare initial state in terms of osculating orbital elements
-# oe0 = [a,e,i,Ω,ω,M]
-
-# Convert osculating elements to Cartesian states
-# eci0 = sOSCtoCART(oe0, use_degrees=false)
-
-# r_eci0 = eci0[1:3]
-# v_eci0 = eci0[4:6]
+global params
 
 # timing stuff
 epc_orbital = initial_conditions.epc_orbital
@@ -57,17 +38,15 @@ t_vec_orbital = time_params.t_vec_orbital
 inner_loop_t_vec = time_params.inner_loop_t_vec
 t_vec_attitude = time_params.t_vec_attitude
 
-# pre-allocate
+# pre-allocate arrays for storage
 orbital_state = zeros(6,length(t_vec_orbital))
-attitude_state = zeros(7,Int(length(t_vec_orbital)*dt_orbital*(1/dt_attitude)))
+attitude_state = zeros(7,length(t_vec_attitude))
 B_eci = zeros(3,length(t_vec_orbital)-1)
 
+# @infiltrate
+# error()
 # initial conditions
 orbital_state[:,1] = initial_conditions.eci_rv_0
-# q0 = [0;0;0;1]
-# # ω0 = [.2;7;.2]
-# ω0 = deg2rad(270)*normalize(randn(3))
-# ω0 = [.01;.01;.01]
 attitude_state[:,1] = [initial_conditions.ᴺqᴮ0;
                        initial_conditions.ω0]
 
@@ -79,6 +58,7 @@ for kk = 1:(length(t_vec_orbital)-1)
     r_sun_eci = SD.sun_position(epc_orbital)
     eclipse = eclipse_check(orbital_state[1:3,kk], r_sun_eci)
 
+    @show eclipse
     # atmospheric drag
     ρ = density_harris_priester(orbital_state[1:3,kk], r_sun_eci)
     ecef_Q_eci = SD.rECItoECEF(epc_orbital)
@@ -100,12 +80,19 @@ for kk = 1:(length(t_vec_orbital)-1)
         # magnetic field vector in ECI (nT)
         B_eci_T = B_eci[:,kk]
 
-        # Bdot Control law
+        # bdot Control law (julia)
         m = bdot_control_law(attitude_state[1:4,index_n],
                              attitude_state[5:7,index_n],
                              params.sc.max_dipoles,
                              B_eci_T,
                              eclipse)
+
+        # bdot control law (python)
+        # m = bdot_control_law_python(attitude_state[1:4,index_n],
+        #                             attitude_state[5:7,index_n],
+        #                             params.sc.max_dipoles,
+        #                             B_eci_T,
+        #                             eclipse)
 
         # disturbance torques
         τ = zeros(3)
@@ -126,6 +113,12 @@ for kk = 1:(length(t_vec_orbital)-1)
 end
 
 @show time() - t1
+
+
+
+
+
+## plotting stuff
 # @infiltrate
 
 # plot(vec(orbital_state[1,:]),vec(orbital_state[2,:]),vec(orbital_state[3,:]))
@@ -137,9 +130,17 @@ B_eci *=1e9
 #
 # # @infiltrate
 t_vec_attitude = t_vec_attitude ./60
-plot(t_vec_attitude,vec(attitude_state[5,:]))
-plot!(t_vec_attitude,vec(attitude_state[6,:]))
-plot!(t_vec_attitude,vec(attitude_state[7,:]),xticks = 0:1:100)
+plot(t_vec_attitude,rad2deg.(vec(attitude_state[5,:])),title = "Bdot Detumble",label = "ωₓ")
+plot!(t_vec_attitude,rad2deg.(vec(attitude_state[6,:])))
+plot!(t_vec_attitude,rad2deg.(vec(attitude_state[7,:])),xticks = 0:10:200,xlabel = "Time (minutes)",ylabel = "Angular Velocity (deg/s)")
+
+
+omega_norm = zeros(length(t_vec_attitude))
+for i = 1:length(t_vec_attitude)
+    omega_norm[i] = rad2deg(norm(vec(attitude_state[5:7,i])))
+end
+
+plot(t_vec_attitude,omega_norm,xlabel = "Time (minutes)",ylabel = "Angular Velocity (deg/s)",title = "Bdot Detumble")
 
 end
 
