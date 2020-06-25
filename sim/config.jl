@@ -34,6 +34,13 @@ function config(path_to_config_yaml)
       # sc_mass = 177.808e-3
       # sc_area = .01
       # sc_cd = 1.5
+      faces = [sc_properties["faces"][1]';
+               sc_properties["faces"][2]';
+               sc_properties["faces"][3]';
+               sc_properties["faces"][4]';
+               sc_properties["faces"][5]';
+               sc_properties["faces"][6]']
+      # face = vcat(faces[1]',faces[2]',faces[3]',)
 
       sc_mass = sc_properties["mass"]
       sc_area = sc_properties["area"]
@@ -44,7 +51,7 @@ function config(path_to_config_yaml)
       max_dipoles = sc_properties["max_dipoles"]
 
       sc = (mass = sc_mass, area = sc_area, cd = sc_cd,J=J,invJ=invJ,
-            max_dipoles = max_dipoles)
+            max_dipoles = max_dipoles,faces=faces)
 
       # spherical harmonic expansion
       grav_deg = gravity["gravity_degree"]

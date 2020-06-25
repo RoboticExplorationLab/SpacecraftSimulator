@@ -12,6 +12,7 @@ include(joinpath(ss_sim_path,"dynamics_functions.jl"))
 include(joinpath(ss_sim_path,"mag_field.jl"))
 include(joinpath(ss_sim_path,"bdot.jl"))
 include(joinpath(ss_sim_path,"sim/config.jl"))
+include(joinpath(ss_sim_path,"sensor_models.jl"))
 #
 # # @infiltrate
 # # error()

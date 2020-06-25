@@ -7,6 +7,13 @@ sc_properties:
   area:  0.01                                # m²
   cd:    1.5                                 # ()
   max_dipoles: [8.8e-3,1.373e-2,8.2e-3]      # A⋅m²
+  faces:
+    - [1.0, 0.0, 0.0]
+    - [-1.0, 0.0, 0.0]
+    - [0.0, 1.0, 0.0]
+    - [0.0, -1.0, 0.0]
+    - [0.0, 0.0, 1.0]
+    - [0.0, 0.0, -1.0]
 
 gravity:
   spherical_harmonic_gravity_bool: true      # ()
