@@ -1,6 +1,20 @@
+
+
 function attitude_loop!(orbital_state,attitude_state,kk,B_eci,r_sun_eci,
                         eclipse,inner_loop_t_vec,attitude_state_sense,
                         B_body_sense_vec,s_body_sense_vec,epc_orbital,dt_attitude)
+    """This performs the inner loop attitude dynamics.
+
+    Args:
+        orbital_state: [r_eci;v_eci] history array
+        attitude_state: [q;ω] history array
+        kk: index for orbital_state
+        B_eci: [bi;bj;bk] eci history array (T)
+        r_sun_eci: position vector from eci to sun (m)
+        eclipse: bool for eclipse or not
+
+    """
+
 
 
 # attitude dynamics inner loop

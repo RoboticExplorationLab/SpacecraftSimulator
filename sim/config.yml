@@ -41,7 +41,7 @@ initial_attitude_conditions:
 
 propagator_parameters:
   epoch: "2018-12-01 16:22:19.0 GPS"         # Epoch (SatelliteDynamics)
-  dt_orbital:      10.0                      # sec
+  dt_orbital:      5.0                      # sec
   dt_attitude:     0.05                      # sec
   dt_controller:   0.1                       # sec
   final_time_days: 0.1                       # days

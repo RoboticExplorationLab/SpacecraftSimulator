@@ -2,6 +2,9 @@ using LinearAlgebra, SatelliteDynamics, SatelliteToolbox, Plots
 
 using Infiltrator
 using StaticArrays
+using CSV
+using DataFrames
+using ProgressMeter
 const SD = SatelliteDynamics
 const ST = SatelliteToolbox
 
@@ -60,12 +63,13 @@ function sim_driver(path_to_yaml)
 
     # main loop
     t1 = time()
-    for kk = 1:(length(t_vec_orbital)-1)
+    @showprogress "Simulating..." for kk = 1:(length(t_vec_orbital)-1)
 
         # sun position and eclipse check
         r_sun_eci = SD.sun_position(epc_orbital)
         eclipse = eclipse_check(orbital_state[1:3,kk], r_sun_eci)
         eclipse_hist[kk] = eclipse
+
         # atmospheric drag
         ρ = density_harris_priester(orbital_state[1:3,kk], r_sun_eci)
         ecef_Q_eci = SD.rECItoECEF(epc_orbital)
@@ -91,6 +95,7 @@ function sim_driver(path_to_yaml)
 
         # increment the time
         epc_orbital += dt_orbital
+
 
     end
 
@@ -126,7 +131,16 @@ function sim_driver(path_to_yaml)
     plot(t_vec_attitude,omega_norm,xlabel = "Time (minutes)",ylabel = "Angular Velocity (deg/s)",title = "Bdot Detumble")
 
     plot!(t_vec_orbital,100*eclipse_hist,label = "Eclipse")
+
+    display(plot(vec(B_eci[1,:])))
+    display(plot!(vec(B_eci[2,:])))
+    display(plot!(vec(B_eci[3,:])))
+
+    return sim_output = (B_eci = B_eci, orbital_state= orbital_state, t_vec_orbital = t_vec_orbital)
 end
 
 path_to_yaml = "sim/config.yml"
-sim_driver(path_to_yaml)
+sim_output = sim_driver(path_to_yaml)
+B_eci = sim_output.B_eci
+
+CSV.write("FileName.csv",  DataFrame(B_eci'), header=false)
