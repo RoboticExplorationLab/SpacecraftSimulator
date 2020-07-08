@@ -18,5 +18,5 @@ include(joinpath(ss_sim_path,"sensor_models.jl"))
 # # @infiltrate
 # # error()
 #
-# # load in python functions
-include(joinpath(ss_sim_path,"python_files/load_python_files.jl"))
+# # load in python functions TODO: fix this with brian tracy
+# include(joinpath(ss_sim_path,"python_files/load_python_files.jl"))

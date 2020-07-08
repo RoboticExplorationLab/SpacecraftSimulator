@@ -54,6 +54,7 @@ function config(path_to_config_yaml)
             max_dipoles = max_dipoles,faces=faces)
 
       # spherical harmonic expansion
+      spherical_harmonic_gravity_bool = gravity["spherical_harmonic_gravity_bool"]
       grav_deg = gravity["gravity_degree"]
       grav_order = gravity["gravity_order"]
 
@@ -94,11 +95,12 @@ function config(path_to_config_yaml)
       eci_rv_0 = sOSCtoCART(oe0, use_degrees=false)
 
       initial_conditions = (epc_orbital = epc_orbital,ᴺqᴮ0=ᴺqᴮ0,ω0=ω0,
-                            eci_rv_0 = eci_rv_0)
+                            eci_rv_0 = eci_rv_0,oe0 = oe0)
 
 
       params = (sc=sc, time_params=time_params,initial_conditions=initial_conditions,
-                grav_deg = grav_deg, grav_order = grav_order)
+                grav_deg = grav_deg, grav_order = grav_order,
+                spherical_harmonic_gravity_bool = spherical_harmonic_gravity_bool)
 
       return params,initial_conditions, time_params
 end

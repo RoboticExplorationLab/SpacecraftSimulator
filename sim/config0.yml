@@ -37,11 +37,11 @@ initial_orbital_elements:
 
 initial_attitude_conditions:
   q0: [0,0,0,1.0]                            # ()       (ᴺqᴮ)
-  w0: [-2.41, 3.7092, -1.62]                 # (rad/s)  (ᴺωᴮ, expr. B)
+  w0: [0, 0, 0.0]                 # (rad/s)  (ᴺωᴮ, expr. B)
 
 propagator_parameters:
   epoch: "2018-12-01 16:22:19.0 GPS"         # Epoch (SatelliteDynamics)
-  dt_orbital:      0.1                      # sec
-  dt_attitude:     0.05                      # sec
+  dt_orbital:      1.0                      # sec
+  dt_attitude:     0.5                      # sec
   dt_controller:   0.1                       # sec
-  final_time_days: 0.5                       # days
+  final_time_days: 1.0                       # days

@@ -33,7 +33,7 @@ function sim_driver(path_to_yaml)
     dt_controller = time_params.dt_controller
 
     # this takes care of the sample ratio
-    controller_sample_ratio = Int(dt_controller/dt_attitude)
+    # controller_sample_ratio = Int(dt_controller/dt_attitude)
 
     # time vector stuff
     tf = time_params.tf
@@ -71,10 +71,11 @@ function sim_driver(path_to_yaml)
         eclipse_hist[kk] = eclipse
 
         # atmospheric drag
-        ρ = density_harris_priester(orbital_state[1:3,kk], r_sun_eci)
-        ecef_Q_eci = SD.rECItoECEF(epc_orbital)
-        a_drag = accel_drag(orbital_state[:,kk], ρ, params.sc.mass,
-                            params.sc.area, params.sc.cd, ecef_Q_eci)
+        # ρ = density_harris_priester(orbital_state[1:3,kk], r_sun_eci)
+        # ecef_Q_eci = SD.rECItoECEF(epc_orbital)
+        # a_drag = accel_drag(orbital_state[:,kk], ρ, params.sc.mass,
+        #                     params.sc.area, params.sc.cd, ecef_Q_eci)
+        a_drag = zeros(3)
 
         # mag field vector
         B_eci[:,kk] = IGRF13(orbital_state[1:3,kk],epc_orbital)
@@ -139,8 +140,8 @@ function sim_driver(path_to_yaml)
     return sim_output = (B_eci = B_eci, orbital_state= orbital_state, t_vec_orbital = t_vec_orbital)
 end
 
-path_to_yaml = "sim/config.yml"
-sim_output = sim_driver(path_to_yaml)
-B_eci = sim_output.B_eci
+# path_to_yaml = "sim/config.yml"
+# sim_output = sim_driver(path_to_yaml)
+# B_eci = sim_output.B_eci
 
-CSV.write("FileName.csv",  DataFrame(B_eci'), header=false)
+# CSV.write("FileName.csv",  DataFrame(B_eci'), header=false)

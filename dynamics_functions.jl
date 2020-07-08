@@ -15,17 +15,20 @@ function FODE(epc::Epoch,eci_state::Vec,u::Vec)::Vec
     v_eci = eci_state[4:6]
 
 
-    # spherical harmonic gravity stuff
+    if params.spherical_harmonic_gravity_bool
+        # spherical harmonic gravity stuff
 
-    # ECI ECEF stuff
-    # ECEF_Q_ECI = SD.rECItoECEF(epc)
-    #
-    # # acceleration
-    # a_eci = SD.accel_gravity(r_eci,ECEF_Q_ECI,params.grav_deg,
-    #                                           params.grav_order) + u
+        # ECI ECEF stuff
+        ECEF_Q_ECI = SD.rECItoECEF(epc)
+        #
+        # acceleration
+        a_eci = SD.accel_gravity(r_eci,ECEF_Q_ECI,params.grav_deg,
+                                                   params.grav_order) + u
 
-    # J2 only
-    a_eci = FODE_J2(r_eci) + u
+    else
+        # J2 only
+        a_eci = FODE_J2(r_eci) + u
+    end
 
 
     return [v_eci;a_eci]

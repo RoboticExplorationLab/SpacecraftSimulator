@@ -142,15 +142,15 @@ def rkstep_py(x0, u0, dt):
     Nx = x0.shape[0]
     Nu = u0.shape[0]
 
-    xdot1, dxdot1 = pendulumDynamics_py(0, x0, u0)
-    xdot2, dxdot2 = pendulumDynamics_py(0, x0 + 0.5 * xdot1 * dt, u0)
+    xdot1, A1, B1 = pendulumDynamics_py(0, x0, u0)
+    xdot2, A2, B2 = pendulumDynamics_py(0, x0 + 0.5 * xdot1 * dt, u0)
 
     x1 = x0 + dt * xdot2
 
-    A1 = dxdot1[:, 0:Nx]
-    A2 = dxdot2[:, 0:Nx]
-    B1 = dxdot1[:, Nx:]
-    B2 = dxdot2[:, Nx:]
+    # A1 = dxdot1[:, 0:Nx]
+    # A2 = dxdot2[:, 0:Nx]
+    # B1 = dxdot1[:, Nx:]
+    # B2 = dxdot2[:, Nx:]
 
     A = np.eye(2) + dt * A2 + 0.5 * dt * dt * A2 @ A1
     B = dt * B2 + 0.5 * dt * dt * A2 @ B1
@@ -173,9 +173,9 @@ def pendulumDynamics_py(t, x, u):
 
     A = np.array([[0, 1], [-m * g * lc * np.cos(x[0]) / I, -b / I]])
     B = np.array([[0], [1 / I]])
-    dxdot = np.hstack((A, B))
+    # dxdot = np.hstack((A, B))
 
-    return xdot, dxdot
+    return xdot, A, B
 
 
 # Test the algorithm
