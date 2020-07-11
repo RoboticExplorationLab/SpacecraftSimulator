@@ -43,22 +43,16 @@ C = cholesky(A)
 function chol_solve(L,b)
     """Solve (L*L')*x = b using forward and backwards substituion"""
 
+    # problem length
     n = length(b)
+
+    # forward substitution
     z = zeros(n)
-
-
-
-    # L * (L'*x) = b
-    # L * z      = b
-
-    # forward substituion
     for i = 1:n
         α = b[i]
-
         for j = 1:(i-1)
             α = α - L[i,j]*z[j]
         end
-
         z[i] = α/L[i,i]
     end
 
