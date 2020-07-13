@@ -1,8 +1,8 @@
 sc_properties:
   inertia_rows:
-    - [1.959e-4, 2016.333e-9, 269.176e-9]    # kg⋅m²
-    - [2016.333e-9, 1.999e-4, 2318.659e-9]   # kg⋅m²
-    - [269.176e-9, 2318.659e-9, 1.064e-4]    # kg⋅m²
+    - [1.0 , 0.0, 0.0]    # kg⋅m²
+    - [0.0, 2.0,  0.0]   # kg⋅m²
+    - [0.0, 0.0,  3.0]    # kg⋅m²
   mass:  177.808e-3                          # kg
   area:  0.01                                # m²
   cd:    1.5                                 # ()
@@ -37,11 +37,11 @@ initial_orbital_elements:
 
 initial_attitude_conditions:
   q0: [0,0,0,1.0]                            # ()       (ᴺqᴮ)
-  w0: [-2.41, 3.7092, -1.62]                 # (rad/s)  (ᴺωᴮ, expr. B)
+  w0: [.2, 7, .2]                           # (rad/s)  (ᴺωᴮ, expr. B)
 
 propagator_parameters:
-  epoch: "2018-12-01 16:22:19.0 GPS"         # Epoch (SatelliteDynamics)
+  epoch: "2018-12-01 16:22:19.0 GPS"         # Epoch (SatelliteDynamics.jl)
   dt_orbital:      10.0                      # sec
   dt_attitude:     0.05                      # sec
-  dt_controller:   0.1                       # sec
-  final_time_days: 0.1                       # days
+  dt_controller:   0.05                       # sec
+  final_time_days: 0.01                       # days
