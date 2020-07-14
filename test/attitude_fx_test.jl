@@ -50,3 +50,45 @@ end
         end
     end
 end
+
+@testset "pure quaternion converions" begin
+    let
+        for i = 1:10
+
+            x = randn(3)
+
+            x_quaternion = H()*x
+
+            @test isapprox(x,x_quaternion[1:3],rtol = 1e-6)
+
+            @test isapprox(x_quaternion[1:3],H()'*x_quaternion,rtol = 1e-6)
+
+        end
+    end
+end
+
+
+@testset "axis angle rotations" begin
+    let
+        for i = 1:1000
+
+            ϕ = randn(3)
+
+            x_old = randn(3)
+
+            q = q_from_phi(ϕ)
+            Q = dcm_from_phi(ϕ)
+
+            x_new_expm = exp(skew_from_vec(ϕ))*x_old
+
+            x_new_dcm = Q*x_old
+
+            x_new_quaternion = H()'*(q ⊙ (H()*x_old) ⊙ qconj(q))
+
+            @test isapprox(x_new_expm,x_new_dcm,rtol = 1e-6)
+
+            @test isapprox(x_new_expm,x_new_quaternion,rtol = 1e-6)
+
+        end
+    end
+end

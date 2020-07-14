@@ -84,6 +84,12 @@ function vec_from_skew(mat::Mat)::Vec
     return [mat[3, 2]; mat[1, 3]; mat[2, 1]]
 end
 
+function dcm_from_phi(phi::Vec)::Mat
+    """DCM from axis angle (phi)"""
+    return skew_expm(skew_from_vec(phi))
+end
+
+
 function skew_expm(B::Mat)::Mat
     """Expm for skew symmetric matrices.
 
@@ -297,4 +303,13 @@ function q_shorter(q)
         q = -q
     end
     return q
+end
+
+
+function H()
+    """matrix for converting vector to pure quaternion. Scalar last"""
+    return [1 0 0;
+            0 1 0;
+            0 0 1;
+            0 0 0.0]
 end
