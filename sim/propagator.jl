@@ -9,28 +9,6 @@ const SD = SatelliteDynamics
 const ST = SatelliteToolbox
 
 
-mutable struct truth_struct
-    orbital_state   :: Array{Float64,2}
-    attitude_state  :: Array{Float64,2}
-    ᴺqᴮ             :: Array{Float64,1}
-    ᴺQᴮ             :: Array{Float64,2}
-    ω               :: Array{Float64,1}
-    B_eci           :: Array{Float64,2}
-    eclipse_hist    :: Array{Bool,1}
-    r_sun_eci       :: Array{Float64,2}
-    I_sun_flux      :: Array{Float64,2}
-    sun_body        :: Array{Float64,2}
-    B_body          :: Array{Float64,2}
-end
-
-mutable struct sense_struct
-    orbital_state   :: Array{Float64,2}
-    attitude_state  :: Array{Float64,2}
-    B_eci           :: Array{Float64,2}
-    B_body          :: Array{Float64,2}
-    eclipse_hist    :: Array{Bool,1}
-end
-
 
 # load in the julia and python functions
 ss_sim_path =  dirname(dirname(@__FILE__))
@@ -65,107 +43,48 @@ function sim_driver(path_to_yaml)
     t_vec_attitude = time_params.t_vec_attitude
 
     # pre-allocate arrays for storage
+    truth = initialize_struct(truth_state_struct,time_params,initial_conditions)
 
-
-
-    # @infiltrate
-    # error()
-    truth = truth_struct(zeros(6,length(t_vec_orbital)),
-                         zeros(7,length(t_vec_attitude)),
-                         zeros(4),
-                         zeros(3,3),
-                         zeros(3),
-                         zeros(3,length(t_vec_orbital)-1),
-                         zeros(length(t_vec_orbital)),
-                         zeros(3,length(t_vec_orbital)-1),
-                         zeros(6,length(t_vec_attitude))
-                         )
-
-
-    # orbital_state = zeros(6,length(t_vec_orbital))
-    # attitude_state = zeros(7,length(t_vec_attitude))
-    # B_eci = zeros(3,length(t_vec_orbital)-1)
-    # eclipse_hist = zeros(length(t_vec_orbital))
-
-    B_body_sense_vec = zeros(3,length(t_vec_attitude))
-    s_body_sense_vec = zeros(3,length(t_vec_attitude))
-    attitude_state_sense = zeros(7,length(t_vec_attitude))
-
-    # pre-allocate sensor stuff
-
-
-    # @infiltrate
-    # error()
-    # initial conditions
-    truth.orbital_state[:,1]  = initial_conditions.eci_rv_0
-    truth.attitude_state[:,1] = [initial_conditions.ᴺqᴮ0;
-                                 initial_conditions.ω0]
+    # truth.orbital_state[1]  = initial_conditions.eci_rv_0
+    # truth.attitude_state[1] = [initial_conditions.ᴺqᴮ0;
+    #                              initial_conditions.ω0]
 
     # main loop
     t1 = time()
     @showprogress "Simulating..." for kk = 1:(length(t_vec_orbital)-1)
 
-        # sun position and eclipse check
-        truth.r_sun_eci[:,kk] = SD.sun_position(epc_orbital)
-        eclipse = eclipse_check(truth.orbital_state[1:3,kk], truth.r_sun_eci[:,kk])
-        truth.eclipse_hist[kk] = eclipse
+        # derive truth quantities
+        orbital_truth_struct_update!(truth,kk,epc_orbital)
 
-
-        # mag field vector
-        truth.B_eci[:,kk] = IGRF13(truth.orbital_state[1:3,kk],epc_orbital)
-
-        # thruster acceleration
-        u_thruster = zeros(3)
-
-        #----------------------ATTITUDE LOOP------------------------------
+        # #----------------------ATTITUDE LOOP------------------------------
         # attitude dynamics inner loop
         for jj = 1:length(inner_loop_t_vec)-1
 
             # index of current step n
             index_n = (kk-1)*(length(inner_loop_t_vec)-1) + jj
 
-            # true state
-            ᴺqᴮ_true = truth.attitude_state[1:4,index_n]
-            ω_true = truth.attitude_state[5:7,index_n]
-            r_eci_true = truth.orbital_state[1:3,kk]
-            v_eci_true = truth.orbital_state[4:6,kk]
-
-            # environmental stuff
-            B_eci_T_true = truth.B_eci[:,kk]
-            r_sun_eci_true = truth.r_sun_eci[:,kk]
-            eclipse_true = eclipse
-
-            # ---------------truth measurements-----------------
-            # attitude
-            ᴺQᴮ_true = dcm_from_q(ᴺqᴮ_true)
-            ᴮQᴺ_true = transpose(ᴺQᴮ_true)
-
-            # magnetic field vector in the body
-            B_body_T_true = ᴮQᴺ_true*B_eci_T_true
-
-            # sun flux
-            I_vec_true = sun_flux(r_sun_eci_true,r_eci_true,ᴺQᴮ_true)
-
-            # sun vector in body
-            s_body_true = s_body_from_I(I_vec_true)
-
-            # eclipse sense
-            eclipse_sense = eclipse_true
+            # update the derived state
+            attitude_truth_struct_update!(truth,kk,index_n)
 
             # disturbance torques
             τ = zeros(3)
+
+            # ------------------ control law -------------------------
             sc_mag_moment = zeros(3)
 
             # update the attitude with RK4
-            truth.attitude_state[:,index_n+1] =rk4_attitude(spacecraft_eom,
-            epc_orbital, truth.attitude_state[:,index_n], sc_mag_moment, B_eci_T_true, τ, dt_attitude)
+            truth.attitude_state[index_n+1] =rk4_attitude(spacecraft_eom,
+            epc_orbital, truth.attitude_state[index_n], sc_mag_moment, truth.B_eci[kk], τ, dt_attitude)
 
+            # add update for the last iter of each inner attitude loop
         end
         # --------------------------- end attitude loop -----------------------
 
 
+        u_thruster = zeros(3)
+
         # propagate orbit one step
-        truth.orbital_state[:,kk+1] =rk4_orbital(FODE, epc_orbital, truth.orbital_state[:,kk],
+        truth.orbital_state[kk+1] =rk4_orbital(FODE, epc_orbital, truth.orbital_state[kk],
                                       u_thruster, dt_orbital)
 
         # increment the time
@@ -174,52 +93,37 @@ function sim_driver(path_to_yaml)
 
     end
 
+    # derive quantities for the last step
+    orbital_truth_struct_update!(truth,length(t_vec_orbital),epc_orbital)
+    attitude_truth_struct_update!(truth,length(t_vec_orbital),length(t_vec_attitude))
+
+    # timing
     @show time() - t1
 
 
-
-
-
-    ## plotting stuff
-    # @infiltrate
-
-    # plot(vec(orbital_state[1,:]),vec(orbital_state[2,:]),vec(orbital_state[3,:]))
-    #
-    # B_eci *=1e9
-    # # plot(vec(B_eci[1,:]))
-    # # plot!(vec(B_eci[2,:]))
-    # # plot!(vec(B_eci[3,:]))
-    # #
-    # # # @infiltrate
-    # t_vec_attitude = t_vec_attitude ./60
-    # t_vec_orbital = t_vec_orbital ./60
-    # plot(t_vec_attitude,rad2deg.(vec(attitude_state[5,:])),title = "Bdot Detumble",label = "ωₓ")
-    # plot!(t_vec_attitude,rad2deg.(vec(attitude_state[6,:])))
-    # plot!(t_vec_attitude,rad2deg.(vec(attitude_state[7,:])),xticks = 0:10:200,xlabel = "Time (minutes)",ylabel = "Angular Velocity (deg/s)")
-    #
-    #
-    # omega_norm = zeros(length(t_vec_attitude))
-    # for i = 1:length(t_vec_attitude)
-    #     omega_norm[i] = rad2deg(norm(vec(attitude_state[5:7,i])))
-    # end
-    #
-    # plot(t_vec_attitude,omega_norm,xlabel = "Time (minutes)",ylabel = "Angular Velocity (deg/s)",title = "Bdot Detumble")
-    #
-    # plot!(t_vec_orbital,100*eclipse_hist,label = "Eclipse")
-    #
-    # display(plot(vec(B_eci[1,:])))
-    # display(plot!(vec(B_eci[2,:])))
-    # display(plot!(vec(B_eci[3,:])))
-
     return sim_output = (truth=truth, t_vec_orbital = t_vec_orbital,
                          t_vec_attitude = t_vec_attitude)
+    # return sim_output = (
 end
 
 path_to_yaml = "sim/config_attitude_test.yml"
 sim_output = sim_driver(path_to_yaml)
-# B_eci = sim_output.B_eci
 
-# CSV.write("FileName.csv",  DataFrame(B_eci'), header=false)
-plot(sim_output.t_vec_attitude,rad2deg.(vec(sim_output.truth.attitude_state[5,:])),title = "Bdot Detumble",label = "ωₓ")
-plot!(sim_output.t_vec_attitude,rad2deg.(vec(sim_output.truth.attitude_state[6,:])))
-plot!(sim_output.t_vec_attitude,rad2deg.(vec(sim_output.truth.attitude_state[7,:])),xticks = 0:10:200,xlabel = "Time (Seconds)",ylabel = "Angular Velocity (deg/s)")
+
+r_eci = mat_from_vec(sim_output.truth.r_eci)
+B_eci = mat_from_vec(sim_output.truth.B_eci)
+w = mat_from_vec(sim_output.truth.ω)
+# plot(sim_output.t_vec_orbital,vec(r_eci[1,:]))
+
+# plot orbital motion
+plot(vec(r_eci[1,:])/1e3,vec(r_eci[2,:])/1e3,vec(r_eci[3,:])/1e3,title = "Orbital Motion",
+label = "",xlabel = "ECI X (km)",ylabel = "ECI Y (km)", zlabel = "ECI Z (km)")
+
+#
+plot(sim_output.t_vec_orbital,vec(B_eci[1,:]))
+plot!(sim_output.t_vec_orbital,vec(B_eci[2,:]))
+plot!(sim_output.t_vec_orbital,vec(B_eci[3,:]))
+
+plot(sim_output.t_vec_attitude,vec(w[1,:]))
+plot!(sim_output.t_vec_attitude,vec(w[2,:]))
+plot!(sim_output.t_vec_attitude,vec(w[3,:]),xlim = (0,21))

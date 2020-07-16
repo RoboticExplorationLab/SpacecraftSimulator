@@ -68,8 +68,8 @@ function config(path_to_config_yaml)
       # time vectors for simulation
       t_vec_orbital = 0:dt_orbital:tf
       inner_loop_t_vec = 0:dt_attitude:dt_orbital
-      t_vec_attitude = 0:dt_attitude:(t_vec_orbital[end]+dt_orbital-dt_attitude)
-
+      # t_vec_attitude = 0:dt_attitude:(t_vec_orbital[end]+dt_orbital-dt_attitude)
+      t_vec_attitude = 0:dt_attitude:(t_vec_orbital[end])
       # time parameters named tuple
       time_params = (dt_orbital = dt_orbital, dt_attitude = dt_attitude,
                      dt_controller = dt_controller,tf = tf,
