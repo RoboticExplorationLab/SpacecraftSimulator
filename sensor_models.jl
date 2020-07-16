@@ -1,32 +1,43 @@
 
 
 #------------------------------TRUTH models------------------------------------
-function sun_flux(r_sun_eci,r_eci,ᴺQᴮ)
+
+function sun_body_normalized(r_sun_eci,r_eci,ᴺQᴮ)
+    # posiiton vector from spacecraft to sun
+    sc_r_sun = r_sun_eci - r_eci
+
+    # normalize and express in the body frame
+    return transpose(ᴺQᴮ)*normalize(sc_r_sun)
+end
+
+function sun_flux(r_sun_eci,r_eci,ᴺQᴮ,eclipse)
     """Gets the true flux values for each coarse sun sensor
 
     Args:
         r_sun_eci: position vector from eci to sun
         r_eci: sc position vector from eci to sc
         ᴺQᴮ: DCM relating eci (N) and body (B)
+        eclipse:
 
     Returns:
         I_vec: flux values on each face (0-1)
     """
 
+    if eclipse
+        return zeros(6)
+    else
+        # normalize and express in the body frame
+        s = sun_body_normalized(r_sun_eci,r_eci,ᴺQᴮ)
 
-    # posiiton vector from spacecraft to sun
-    sc_r_sun = r_sun_eci - r_eci
+        # Get dot products
+        I_vec = params.sc.faces*s
 
-    # normalize and express in the body frame
-    s = transpose(ᴺQᴮ)*normalize(sc_r_sun)
+        # only keep the positive ones (negative ones go to 0)
+        I_vec = I_vec .* (I_vec .> 0.0)
 
-    # Get dot products
-    I_vec = params.sc.faces*s
+        return I_vec
+    end
 
-    # only keep the positive ones (negative ones go to 0)
-    I_vec = I_vec .* (I_vec>zeros(6))
-
-    return I_vec
 end
 
 function s_body_from_I(I_vec)

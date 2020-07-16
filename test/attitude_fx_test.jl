@@ -92,3 +92,60 @@ end
         end
     end
 end
+
+@testset "shorter quaternion" begin
+    let
+        for i = 1:1000
+            q = randq()
+            q = q_shorter(q)
+
+            phi_shorter = phi_from_q(q)
+            phi_longer = phi_from_q(-q)
+
+            @test norm(phi_shorter) < norm(phi_longer)
+        end
+    end
+end
+
+@testset "q - p - g" begin
+    let
+        for i = 1:1000
+
+            q = randq()
+            g = g_from_q(q)
+            p = p_from_q(q)
+
+            q_g = q_from_g(g)
+            q_p = q_from_p(p)
+
+            @test isapprox(q_shorter(q),q_shorter(q_g),rtol = 1e-6)
+            @test isapprox(q_shorter(q),q_shorter(q_p),rtol = 1e-6)
+
+        end
+    end
+end
+
+
+@testset "DCM conversions" begin
+    let
+        for i = 1:1000
+
+            x = randn(3)
+
+            q = randq()
+            g = g_from_q(q)
+            p = p_from_q(q)
+
+            dcm_q = dcm_from_q(q)
+            dcm_g = dcm_from_g(g)
+            dcm_p = dcm_from_p(p)
+
+            @test matrix_isapprox(dcm_q,dcm_g,1e-7)
+            @test matrix_isapprox(dcm_q,dcm_p,1e-7)
+
+            @test isapprox(dcm_q*x,dcm_p*x,rtol = 1e-6)
+            @test isapprox(dcm_q*x,dcm_g*x,rtol = 1e-6)
+
+        end
+    end
+end

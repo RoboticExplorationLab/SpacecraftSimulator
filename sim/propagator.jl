@@ -12,10 +12,15 @@ const ST = SatelliteToolbox
 mutable struct truth_struct
     orbital_state   :: Array{Float64,2}
     attitude_state  :: Array{Float64,2}
+    ᴺqᴮ             :: Array{Float64,1}
+    ᴺQᴮ             :: Array{Float64,2}
+    ω               :: Array{Float64,1}
     B_eci           :: Array{Float64,2}
     eclipse_hist    :: Array{Bool,1}
     r_sun_eci       :: Array{Float64,2}
     I_sun_flux      :: Array{Float64,2}
+    sun_body        :: Array{Float64,2}
+    B_body          :: Array{Float64,2}
 end
 
 mutable struct sense_struct
@@ -67,6 +72,9 @@ function sim_driver(path_to_yaml)
     # error()
     truth = truth_struct(zeros(6,length(t_vec_orbital)),
                          zeros(7,length(t_vec_attitude)),
+                         zeros(4),
+                         zeros(3,3),
+                         zeros(3),
                          zeros(3,length(t_vec_orbital)-1),
                          zeros(length(t_vec_orbital)),
                          zeros(3,length(t_vec_orbital)-1),
@@ -102,12 +110,6 @@ function sim_driver(path_to_yaml)
         eclipse = eclipse_check(truth.orbital_state[1:3,kk], truth.r_sun_eci[:,kk])
         truth.eclipse_hist[kk] = eclipse
 
-        # atmospheric drag
-        # ρ = density_harris_priester(orbital_state[1:3,kk], r_sun_eci)
-        # ecef_Q_eci = SD.rECItoECEF(epc_orbital)
-        # a_drag = accel_drag(orbital_state[:,kk], ρ, params.sc.mass,
-        #                     params.sc.area, params.sc.cd, ecef_Q_eci)
-        a_drag = zeros(3)
 
         # mag field vector
         truth.B_eci[:,kk] = IGRF13(truth.orbital_state[1:3,kk],epc_orbital)
@@ -164,7 +166,7 @@ function sim_driver(path_to_yaml)
 
         # propagate orbit one step
         truth.orbital_state[:,kk+1] =rk4_orbital(FODE, epc_orbital, truth.orbital_state[:,kk],
-                                      u_thruster + a_drag, dt_orbital)
+                                      u_thruster, dt_orbital)
 
         # increment the time
         epc_orbital += dt_orbital

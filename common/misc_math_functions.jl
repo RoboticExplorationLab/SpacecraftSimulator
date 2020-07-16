@@ -313,3 +313,35 @@ function H()
             0 0 1;
             0 0 0.0]
 end
+
+
+function g_from_q(q)
+    """Rodgrigues parameter from quaternion (scalar last)"""
+    return q[1:3]/q[4]
+end
+
+function q_from_g(g)
+    """Quaternion (scalar last) from Rodrigues parameter"""
+    return (1/sqrt(1+dot(g,g)))*[g;1]
+end
+
+function dcm_from_g(g)
+    """DCM form Rodrigues parameter"""
+    return I +  2*(skew_from_vec(g)^2 + skew_from_vec(g))/(1 + dot(g,g))
+end
+
+function p_from_q(q)
+    """MRP from quaternion (scalar last)"""
+    return q[1:3]/(1+q[4])
+end
+
+function q_from_p(p)
+    """Quaternion (scalar last) from MRP"""
+    return (1/(1+dot(p,p)))*[2*p;(1-dot(p,p))]
+end
+
+function dcm_from_p(p)
+    """DCM from MRP"""
+    sp = skew_from_vec(p)
+    return I + (8*sp^2 + 4*(1 - dot(p,p))*sp)/(1 + dot(p,p))^2
+end
