@@ -28,7 +28,7 @@ function sim_driver(path_to_yaml)
     global params
 
     # timing stuff
-    epc_orbital = initial_conditions.epc_orbital
+    # epc_orbital = initial_conditions.epc_orbital
     dt_orbital = time_params.dt_orbital
     dt_attitude = time_params.dt_attitude
     dt_controller = time_params.dt_controller
@@ -54,7 +54,7 @@ function sim_driver(path_to_yaml)
     @showprogress "Simulating..." for kk = 1:(length(t_vec_orbital)-1)
 
         # derive truth quantities
-        orbital_truth_struct_update!(truth,kk,epc_orbital)
+        orbital_truth_struct_update!(truth,kk)
 
         # #----------------------ATTITUDE LOOP------------------------------
         # attitude dynamics inner loop
@@ -72,29 +72,24 @@ function sim_driver(path_to_yaml)
             # ------------------ control law -------------------------
             sc_mag_moment = zeros(3)
 
-            # update the attitude with RK4
-            truth.attitude_state[index_n+1] =rk4_attitude(spacecraft_eom,
-            epc_orbital, truth.attitude_state[index_n], sc_mag_moment, truth.B_eci[kk], τ, dt_attitude)
+            truth.ᴺqᴮ[index_n+1], truth.ω[index_n+1] =rk4_attitude(spacecraft_eom,
+            truth.epc_orbital, [truth.ᴺqᴮ[index_n];truth.ω[index_n]], sc_mag_moment, truth.B_eci[kk], τ, dt_attitude)
 
-            # add update for the last iter of each inner attitude loop
+
         end
         # --------------------------- end attitude loop -----------------------
-
 
         u_thruster = zeros(3)
 
         # propagate orbit one step
-        truth.orbital_state[kk+1] =rk4_orbital(FODE, epc_orbital, truth.orbital_state[kk],
+        truth.r_eci[kk+1], truth.v_eci[kk+1], truth.epc_orbital = rk4_orbital(FODE, truth.epc_orbital, [truth.r_eci[kk]; truth.v_eci[kk]],
                                       u_thruster, dt_orbital)
-
-        # increment the time
-        epc_orbital += dt_orbital
 
 
     end
 
     # derive quantities for the last step
-    orbital_truth_struct_update!(truth,length(t_vec_orbital),epc_orbital)
+    orbital_truth_struct_update!(truth,length(t_vec_orbital))
     attitude_truth_struct_update!(truth,length(t_vec_orbital),length(t_vec_attitude))
 
     # timing

@@ -60,7 +60,7 @@ end
 
 
 function rk4_orbital(f::Function, t_n::RealorEpoch, x_n::Vec, u::Vec,
-                                                              h::Real)::Vec
+                                                              h::Real)::Tuple
     """Runge-Kutta 4th order integration. Epoch for time.
 
     Args:
@@ -79,11 +79,15 @@ function rk4_orbital(f::Function, t_n::RealorEpoch, x_n::Vec, u::Vec,
     k3 = h*f(t_n+h/2,x_n+k2/2,u)
     k4 = h*f(t_n+h,x_n+k3,u)
 
-    return (x_n + (1/6)*(k1+2*k2+2*k3 + k4))
+    x_np1 = (x_n + (1/6)*(k1+2*k2+2*k3 + k4))
+
+
+
+    return x_np1[1:3], x_np1[4:6], t_n+h
 end
 
 function rk4_attitude(f::Function, t_n::RealorEpoch, x_n::Vec, m::Vec,
-                                    B_eci_nT::Vec, τ::Vec, h::Real)::Vec
+                                    B_eci_nT::Vec, τ::Vec, h::Real)::Tuple
     """Runge-Kutta 4th order integration. Epoch for time.
 
     Args:
@@ -106,7 +110,7 @@ function rk4_attitude(f::Function, t_n::RealorEpoch, x_n::Vec, m::Vec,
     x_np1 = (x_n + (1/6)*(k1+2*k2+2*k3 + k4));
     x_np1[1:4] = normalize(x_np1[1:4])
 
-    return x_np1
+    return x_np1[1:4], x_np1[5:7]
 end
 
 function spacecraft_eom(t, x, m, B_eci_nT, τ)

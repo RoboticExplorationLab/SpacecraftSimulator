@@ -1,36 +1,31 @@
 """Functions relating to the state struct."""
 
 mutable struct truth_state_struct
-    orbital_state   :: Array{Array{Float64,1},1}
-    r_eci           :: Array{Array{Float64,1},1} # derived
-    v_eci           :: Array{Array{Float64,1},1} # derived
-    attitude_state  :: Array{Array{Float64,1},1}
-    ᴺqᴮ             :: Array{Array{Float64,1},1} # derived
+    r_eci           :: Array{Array{Float64,1},1}
+    v_eci           :: Array{Array{Float64,1},1}
+    ᴺqᴮ             :: Array{Array{Float64,1},1}
     ᴺQᴮ             :: Array{Array{Float64,2},1} # derived
-    ω               :: Array{Array{Float64,1},1} # derived
-    B_eci           :: Array{Array{Float64,1},1}
-    eclipse_hist    :: Array{Bool,1}
-    r_sun_eci       :: Array{Array{Float64,1},1}
+    ω               :: Array{Array{Float64,1},1}
+    B_eci           :: Array{Array{Float64,1},1} # derived
+    eclipse_hist    :: Array{Bool,1}             # derived
+    r_sun_eci       :: Array{Array{Float64,1},1} # derived
     I_sun_flux      :: Array{Array{Float64,1},1} # derived
     sun_body        :: Array{Array{Float64,1},1} # derived
     B_body          :: Array{Array{Float64,1},1} # derived
+    epc_orbital     :: Epoch
 end
 
-function orbital_truth_struct_update!(truth::truth_state_struct,k::Int,epc_orbital::Epoch)
+function orbital_truth_struct_update!(truth::truth_state_struct,k::Int)
     """Fill in the truth struct with derived properties for orbital changes."""
 
-    # r,v
-    truth.r_eci[k] = truth.orbital_state[k][1:3]
-    truth.v_eci[k] = truth.orbital_state[k][4:6]
-
     # sun position
-    truth.r_sun_eci[k] = SD.sun_position(epc_orbital)
+    truth.r_sun_eci[k] = SD.sun_position(truth.epc_orbital)
 
     # eclipse
     truth.eclipse_hist[k] = eclipse_check(truth.r_eci[k],truth.r_sun_eci[k])
 
     # ECI magnetic field (T)
-    truth.B_eci[k] = IGRF13(truth.r_eci[k],epc_orbital)
+    truth.B_eci[k] = IGRF13(truth.r_eci[k],truth.epc_orbital)
 
 end
 
@@ -38,11 +33,7 @@ function attitude_truth_struct_update!(truth::truth_state_struct,k::Int,jj::Int)
     """Fill in the truth struct with derived properties for attitude changes."""
 
     # pull attitude and get the DCM
-    truth.ᴺqᴮ[jj]   = truth.attitude_state[jj][1:4]
     truth.ᴺQᴮ[jj]   = dcm_from_q(truth.ᴺqᴮ[jj])
-
-    # pull angular velocity
-    truth.ω[jj]     = truth.attitude_state[jj][5:7]
 
     # magnetic field in the body
     truth.B_body[jj] = transpose(truth.ᴺQᴮ[jj])*truth.B_eci[k]
@@ -74,27 +65,28 @@ function initialize_struct(struct_type_name   ::DataType,
     attitude6 = fill(zeros(6),length(t_vec_attitude))
     attitude7 = fill(zeros(7),length(t_vec_attitude))
     orbital_bool = fill(false,length(t_vec_orbital))
+    epc_orbital = Epoch("2018-12-20")
 
-    truth = struct_type_name(copy(orbital6),    # orbital state
-                            copy(orbital3),    # r_eci
-                            copy(orbital3),    # v_eci
-                            copy(attitude7),   # attitude state
-                            copy(attitude4),   # q
-                            copy(attitude3x3), # Q
-                            copy(attitude3),   # ω
-                            copy(orbital3),   # B_eci
-                            copy(orbital_bool),# eclipse
-                            copy(orbital3),    # r_sun_eci
-                            copy(attitude6),   # I_sun_flux
-                            copy(attitude3),   # sun_body
-                            copy(attitude3)    # B_body
-                            )
+    truth = struct_type_name(copy(orbital3),      # r_eci
+                             copy(orbital3),      # v_eci
+                             copy(attitude4),     # q
+                             copy(attitude3x3),   # Q
+                             copy(attitude3),     # ω
+                             copy(orbital3),      # B_eci
+                             copy(orbital_bool),  # eclipse
+                             copy(orbital3),      # r_sun_eci
+                             copy(attitude6),     # I_sun_flux
+                             copy(attitude3),     # sun_body
+                             copy(attitude3),     # B_body
+                             epc_orbital          # time
+                             )
 
     # initial conditions
-    truth.orbital_state[1]  = initial_conditions.eci_rv_0
-    truth.attitude_state[1] = [initial_conditions.ᴺqᴮ0;
-                                 initial_conditions.ω0]
-
+    truth.r_eci[1]  = initial_conditions.eci_rv_0[1:3]
+    truth.v_eci[1]  = initial_conditions.eci_rv_0[4:6]
+    truth.ᴺqᴮ[1] =  initial_conditions.ᴺqᴮ0
+    truth.ω[1] = initial_conditions.ω0
+    truth.epc_orbital = initial_conditions.epc_orbital
         return truth
 end
 

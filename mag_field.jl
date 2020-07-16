@@ -71,6 +71,25 @@ function eclipse_check(x::Array{<:Real, 1}, r_sun::Array{<:Real, 1})
     return nu
 end
 
+function environmental_torques(truth,orb_ind,att_ind)
+    """Environmental torque modeling.
+
+    Args:
+        truth: truth_state_struct
+        kk: orbital index
+        jj: attitude index
+
+    Output: torque (N⋅m)
+
+    """
+    r = norm(truth.r_eci[orb_ind])
+    n = normalize(transpose(truth.ᴺQᴮ[att_ind])*truth.r_eci[orb_ind])
+
+    τ_gg = (3*GM_EARTH/(r^3))*cross(n,params.sc.J*n)
+
+    return τ_gg
+end
+
 # function ecef_Q_ned_mat(longitude,latitude)
 #
 #     # ϕ = geoc[2]
