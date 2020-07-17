@@ -51,9 +51,9 @@ end
     end
 end
 
-@testset "pure quaternion converions" begin
+@testset "pure quaternion conversions" begin
     let
-        for i = 1:10
+        for i = 1:1000
 
             x = randn(3)
 

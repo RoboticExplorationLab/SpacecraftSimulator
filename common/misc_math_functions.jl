@@ -71,6 +71,10 @@ function skew_from_vec(v::Vec)::Mat
     return [0 -v[3] v[2]; v[3] 0 -v[1]; -v[2] v[1] 0]
 end
 
+function hat(v::Vec)::Mat
+    return skew_from_vec(v)
+end
+
 function vec_from_skew(mat::Mat)::Vec
     """Converts 3x3 skew symmetric matrix to a 3x1 vector.
 
@@ -82,6 +86,37 @@ function vec_from_skew(mat::Mat)::Vec
     """
 
     return [mat[3, 2]; mat[1, 3]; mat[2, 1]]
+end
+
+function eye(n::Int)::Mat
+    return diagm(ones(n))
+end
+
+function product_of_diagonals(Q::Mat)::Float64
+    sum = 1.0
+    for i = 1:size(Q,1)
+        sum *= Q[i,i]
+    end
+    return sum
+end
+
+function mvnrnd(μ::Vec,Σ::Mat)::Vec
+
+    if product_of_diagonals(Q) != 0.0
+        return Matrix(cholesky(Σ))*randn(length(μ))+vec(μ)
+    else
+        return sqrt(Σ)*randn(length(μ))+vec(μ)
+    end
+
+end
+
+function fast_mvnrnd(sqrtΣ)
+    return sqrtΣ*randn(size(sqrtΣ,1))
+end
+
+
+function unhat(mat::Mat)::Vec
+    return vec_from_skew(mat)
 end
 
 function dcm_from_phi(phi::Vec)::Mat
@@ -196,7 +231,7 @@ function active_rotation_axis_angle(axis::Vec,theta::Real,vector::Vec)::Vec
 end
 
 
-function ⊙(q1, q2)
+function ⊙(q1::Vec, q2::Vec)::Vec
     """Quaternion multiplication, hamilton product, scalar last"""
 
     v1 = q1[1:3]
@@ -208,7 +243,12 @@ function ⊙(q1, q2)
 
 end
 
-function dcm_from_q(q)
+function qdot(q1::Vec,q2::Vec)::Vec
+    return (q1 ⊙ q2)
+end
+
+
+function dcm_from_q(q::Vec)::Mat
     """DCM from quaternion, hamilton product, scalar last"""
 
     # pull our the parameters from the quaternion
@@ -222,13 +262,13 @@ function dcm_from_q(q)
     return Q
 end
 
-function qconj(q)
+function qconj(q::Vec)::Vec
     """Conjugate of the quaternion (scalar last)"""
 
     return [-q[1:3]; q[4]]
 end
 
-function phi_from_q(q)
+function phi_from_q(q::Vec)::Vec
     """axis angle from quaternion (scalar last)"""
 
     v = q[1:3]
@@ -244,7 +284,7 @@ function phi_from_q(q)
     end
 end
 
-function q_from_phi(ϕ)
+function q_from_phi(ϕ::Vec)::Vec
     """Quaternion from axis angle vector, scalar last"""
 
     θ = norm(ϕ)
@@ -256,7 +296,7 @@ function q_from_phi(ϕ)
     end
 end
 
-function q_from_dcm(dcm)
+function q_from_dcm(dcm::Mat)::Vec
     """Kane/Levinson convention, scalar last"""
     R = dcm
     T = R[1,1] + R[2,2] + R[3,3]
@@ -293,11 +333,11 @@ function q_from_dcm(dcm)
     return q
 end
 
-function randq()
+function randq()::Vec
     return normalize(randn(4))
 end
 
-function q_shorter(q)
+function q_shorter(q::Vec)::Vec
 
     if q[4]<0
         q = -q
@@ -306,7 +346,7 @@ function q_shorter(q)
 end
 
 
-function H()
+function H()::Mat
     """matrix for converting vector to pure quaternion. Scalar last"""
     return [1 0 0;
             0 1 0;
@@ -315,32 +355,32 @@ function H()
 end
 
 
-function g_from_q(q)
+function g_from_q(q::Vec)::Vec
     """Rodgrigues parameter from quaternion (scalar last)"""
     return q[1:3]/q[4]
 end
 
-function q_from_g(g)
+function q_from_g(g::Vec)::Vec
     """Quaternion (scalar last) from Rodrigues parameter"""
     return (1/sqrt(1+dot(g,g)))*[g;1]
 end
 
-function dcm_from_g(g)
+function dcm_from_g(g::Vec)::Mat
     """DCM form Rodrigues parameter"""
     return I +  2*(skew_from_vec(g)^2 + skew_from_vec(g))/(1 + dot(g,g))
 end
 
-function p_from_q(q)
+function p_from_q(q::Vec)::Vec
     """MRP from quaternion (scalar last)"""
     return q[1:3]/(1+q[4])
 end
 
-function q_from_p(p)
+function q_from_p(p::Vec)::Vec
     """Quaternion (scalar last) from MRP"""
     return (1/(1+dot(p,p)))*[2*p;(1-dot(p,p))]
 end
 
-function dcm_from_p(p)
+function dcm_from_p(p::Vec)::Mat
     """DCM from MRP"""
     sp = skew_from_vec(p)
     return I + (8*sp^2 + 4*(1 - dot(p,p))*sp)/(1 + dot(p,p))^2
