@@ -5,10 +5,10 @@ using SatelliteDynamics
 Vec = AbstractArray{<:Real,1}
 
 # vector of vectors
-VecofVecs = Array{Array{Float64,1}1}
+VecofVecs = Array{Array{Float64,1},1}
 
 # vector of matrices
-VecofMats = Array{Array{Float64,2}1}
+VecofMats = Array{Array{Float64,2},1}
 
 # 2d array that must be real
 Mat = AbstractArray{<:Real,2}

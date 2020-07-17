@@ -23,8 +23,11 @@ function IGRF13(r_eci,epc)
     longitude,latitude,altitude = SD.sECEFtoGEOC(r_ecef,use_degrees=false)
 
     # IGRF
-    B_ned_nT = igrf(decimal_date, norm(r_ecef), latitude, longitude, Val(:geocentric))
-
+    # SatelliteToolbox v0.7.1
+    # B_ned_nT = igrf(decimal_date, norm(r_ecef), latitude, longitude, Val(:geocentric))
+    # satelliteToolbox v0.6.3
+    B_ned_nT = igrf12(decimal_date, norm(r_ecef), latitude, longitude, Val{:geocentric})
+    
     # NED and ECEF stuff
     ecef_Q_ned = ecef_Q_ned_mat(longitude,latitude)
 

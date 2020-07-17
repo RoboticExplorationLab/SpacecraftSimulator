@@ -1,8 +1,7 @@
 
 
-function attitude_loop!(orbital_state,attitude_state,kk,B_eci,r_sun_eci,
-                        eclipse,inner_loop_t_vec,attitude_state_sense,
-                        B_body_sense_vec,s_body_sense_vec,epc_orbital,dt_attitude)
+function attitude_loop!(truth::truth_state_struct)
+
     """This performs the inner loop attitude dynamics.
 
     Args:

@@ -102,7 +102,8 @@ function config(path_to_config_yaml)
                 grav_deg = grav_deg, grav_order = grav_order,
                 spherical_harmonic_gravity_bool = spherical_harmonic_gravity_bool)
 
-      return params,initial_conditions, time_params
+      global params
+      return initial_conditions, time_params
 end
 
 

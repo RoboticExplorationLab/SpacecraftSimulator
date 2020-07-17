@@ -44,4 +44,4 @@ propagator_parameters:
   dt_orbital:      1.0                      # sec
   dt_attitude:     0.5                      # sec
   dt_controller:   0.1                       # sec
-  final_time_days: 1.0                       # days
+  final_time_days: 0.5                       # days
