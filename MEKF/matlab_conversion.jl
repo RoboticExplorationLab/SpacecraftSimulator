@@ -7,8 +7,8 @@ end
 
 function dynODE(t_n,x_n,tau,params)
 
-    J = params.J
-    invJ = params.invJ
+    # J = params.J
+    # invJ = params.invJ
 
     # x_n = x_n[:];
     q = x_n[1:4]
@@ -17,7 +17,7 @@ function dynODE(t_n,x_n,tau,params)
 
     q_dot = .5*qdot(q,[w;0])
 
-    wdot = invJ*(tau - cross(w,J*w))
+    wdot = params.invJ*(tau - cross(w,params.J*w))
 
     beta_dot = zeros(3)
 
@@ -31,21 +31,21 @@ end
 
 function g(x,r1n, r2n)
 
-    x = x[:];
-    q = x[1:4];
-    w = x[5:7];
+    # x = x[:];
+    q = x[1:4]
+    w = x[5:7]
 
-    beta = x[8:10];
+    beta = x[8:10]
 
-    gyro = w+beta;
+    gyro = w+beta
 
-    n_Q_b = dcm_from_q(q);
-    b_Q_n = n_Q_b';
+    n_Q_b = dcm_from_q(q)
+    # b_Q_n = n_Q_b'
 
-    r1b = b_Q_n*r1n;
-    r2b = b_Q_n*r2n;
+    r1b = transpose(n_Q_b)*r1n
+    r2b = transpose(n_Q_b)*r2n
 
-    y = [gyro;r1b;r2b];
+    y = [gyro;r1b;r2b]
 
     return y
 
@@ -54,15 +54,17 @@ end
 function add_noise_to_y(y,sqrtR)
 # add measurement noise t
 # y = y[:];
-gyro = y[1:3];
-r1b = y[4:6];
-r2b = y[7:9];
+gyro = y[1:3]
+r1b = y[4:6]
+r2b = y[7:9]
 
-noisy_gyro = gyro + fast_mvnrnd(sqrtR[1:3,1:3]);
-noisy_r1b = S03_noise(r1b,sqrtR[4:6,4:6]);
-noisy_r2b = S03_noise(r2b,sqrtR[7:9,7:9]);
+noisy_gyro = gyro + fast_mvnrnd(sqrtR[1:3,1:3])
+noisy_r1b = S03_noise(r1b,sqrtR[4:6,4:6])
+noisy_r2b = S03_noise(r2b,sqrtR[7:9,7:9])
 
-noisy_y = [noisy_gyro;noisy_r1b;noisy_r2b];
+noisy_y = [noisy_gyro;
+           noisy_r1b;
+           noisy_r2b]
 
 return noisy_y
 
@@ -73,11 +75,11 @@ function S03_noise(vector, sqrt_covariance)
     # here we add noise S03 style
 
     # noise axis angle vector
-    phi_noise = fast_mvnrnd(sqrt_covariance);
+    phi_noise = fast_mvnrnd(sqrt_covariance)
 
 
     # apply the noise rotation to the vector
-    noisy_vector = skew_expm(hat(phi_noise))*vector;
+    noisy_vector = skew_expm(hat(phi_noise))*vector
 
     return noisy_vector
 end
@@ -90,36 +92,33 @@ function ekf_predict(mu,Sigma,tau,params,dt,Q)
 
     # unpack state
     # mu = mu[:];
-    q = mu[1:4];
-    w = mu[5:7];
-    beta = mu[8:10];
+    q = mu[1:4]
+    w = mu[5:7]
+    beta = mu[8:10]
 
-    # inertia
-    J = params.J;
-    invJ = params.invJ;
+    # predict
+    q_next = q ⊙ q_from_phi(w*dt)
+    wdot = params.invJ*(tau-cross(w,params.J*w))
+    w_next = w + wdot*dt
+    beta_next = beta
 
-    # predict using RK4
-    # mu_predict = rk4(dynODE,tn,mu,tau,params,dt);
-    q_next = qdot(q,q_from_phi(w*dt));
-    wdot = invJ*(tau-cross(w,J*w));
-    w_next = w + wdot*dt;
-    beta_next = beta;
-
-    mu_predict = [q_next;w_next;beta_next];
+    mu_predict = [q_next;
+                  w_next;
+                  beta_next]
 
     # jacobians
-    dphi_phi = I- hat(w*dt);
-    dphi_dw = .5*dt*eye(3);
-    dw_w = (I + dt*invJ*(hat(J*w) - hat(w)*J));
-    dbeta_beta = eye(3);
+    dphi_phi = I- hat(w*dt)
+    dphi_dw = .5*dt*eye(3)
+    dw_w = (I + dt*params.invJ*(hat(params.J*w) - hat(w)*params.J))
+    dbeta_beta = eye(3)
 
     # dynamics jacobian (d_f/d_state)
     A = [dphi_phi        dphi_dw          zeros(3,3);
          zeros(3,3)      dw_w                zeros(3,3);
-         zeros(3,3)      zeros(3,3)          dbeta_beta];
+         zeros(3,3)      zeros(3,3)          dbeta_beta]
 
     # covariance prediction
-    Sigma_predict = A*Sigma*A' + Q;
+    Sigma_predict = A*Sigma*A' + Q
 
     return mu_predict, Sigma_predict
 end
@@ -134,8 +133,8 @@ function ekf_innovate(mu_predict,Sigma_predict,yt,r1n,r2n,R)
     n_Q_bt = dcm_from_q(q_predict)
 
     # use the predicted attitude to generate predicted measurements
-    r1b_t = (n_Q_bt)'*r1n
-    r2b_t = (n_Q_bt)'*r2n
+    r1b_t = transpose(n_Q_bt)*r1n
+    r2b_t = transpose(n_Q_bt)*r2n
 
 
     # predicted measurment
@@ -145,26 +144,26 @@ function ekf_innovate(mu_predict,Sigma_predict,yt,r1n,r2n,R)
     z = yt - yhat
 
     # measurement Jacobian
-    C = [zeros(3,3)     I   I  ;
+    C = [zeros(3,3)     I          I  ;
          2*hat(r1b_t) zeros(3,3) zeros(3,3);
          2*hat(r2b_t) zeros(3,3) zeros(3,3)]
 
     # covariance of the innovation
-    S = C*Sigma_predict*C' + R
+    S = C*Sigma_predict*transpose(C) + R
 
     # kalman gain
     # L = Sigma_predict*C'*inv(S)
-    L = Sigma_predict*C'/S
+    L = Sigma_predict*transpose(C)/S
 
     # innovation
     delta_mu = L*z
 
     # update quaternion multiplicatively
-    q_update = qdot(q_predict,q_from_g(delta_mu[1:3]))
+    q_update = q_predict ⊙ q_from_g(delta_mu[1:3])
 
     # update angular velocity and bias additively
-    w_update = mu_predict[5:7] + delta_mu[4:6];
-    beta_update = mu_predict[8:10] + delta_mu[7:9];
+    w_update = mu_predict[5:7] + delta_mu[4:6]
+    beta_update = mu_predict[8:10] + delta_mu[7:9]
 
     # updated mu
     mu_update = [ q_update ;
@@ -172,7 +171,7 @@ function ekf_innovate(mu_predict,Sigma_predict,yt,r1n,r2n,R)
                   beta_update]
 
     # Sigma update
-    Sigma_update = (eye(9) - L*C)*Sigma_predict;
+    Sigma_update = (eye(9) - L*C)*Sigma_predict
 
     return mu_update, Sigma_update
 end
@@ -338,25 +337,20 @@ EKF.Sigma[1] = .01*eye(9);
     # % triad angle error
     angle_error[kk+1] = q_angle_error(state_hist[1:4,kk+1],n_q_b_est);
 
-# %     if rad2deg(angle_error(kk+1)) > 150
-# %         n_Q_b = dcm_from_q(state_hist(1:4,kk+1));
-# %         b_Q_n = n_Q_b';
-# %         r1b = meas_hist(4:6,kk+1);
-# %         r2b = meas_hist(7:9,kk+1);
-# %
-# %         disp('he')
-# %     end
-# %
     # MEKF
     t1 = time()
-    EKF.mu[kk+1], EKF.Sigma[kk+1] = MEKF(EKF.mu[kk],EKF.Sigma[kk],tau,meas_hist[:,kk+1],Q_ekf,R,dt,r1n,r2n,params);
+    @profile EKF.mu[kk+1], EKF.Sigma[kk+1] = MEKF(EKF.mu[kk],EKF.Sigma[kk],tau,meas_hist[:,kk+1],Q_ekf,R,dt,r1n,r2n,params)
+
+    @infiltrate
+    error()
+
     mekf_time += time()-t1
     # % MEKF angle error
     ekf_angle_error[kk+1] = q_angle_error(state_hist[1:4,kk+1],EKF.mu[kk+1][1:4]);
 end
 
-# display(plot(t_vec,rad2deg.(ekf_angle_error),label = "MEKF"))
-# display(plot!(t_vec,rad2deg.(angle_error),label = "Triad"))
+display(plot(t_vec,rad2deg.(ekf_angle_error),label = "MEKF"))
+display(plot!(t_vec,rad2deg.(angle_error),label = "Triad"))
 
 println("Done!")
 @show mekf_time
