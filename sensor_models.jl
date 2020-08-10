@@ -63,7 +63,7 @@ end
 
 
 
-function create_LEM_offset(scale_factor,cross_axis_sensitivity)
+function create_LEM_offset(scale_factor::Vec,cross_axis_sensitivity::Float64)::Mat
 
     scale_mat = sqrt(diagm(scale_factor))*randn(length(scale_factor))
 

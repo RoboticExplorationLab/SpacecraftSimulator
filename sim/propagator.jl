@@ -1,9 +1,9 @@
-using LinearAlgebra, SatelliteDynamics, SatelliteToolbox, Plots
+using LinearAlgebra, SatelliteDynamics, SatelliteToolbox, MATLAB
 
 using Infiltrator
-using StaticArrays
-using CSV
-using DataFrames
+# using StaticArrays
+# using CSV
+# using DataFrames
 using ProgressMeter
 const SD = SatelliteDynamics
 const ST = SatelliteToolbox
@@ -84,21 +84,35 @@ end
 path_to_yaml = "sim/config_attitude_test.yml"
 sim_output = sim_driver(path_to_yaml)
 
+ω = mat_from_vec(sim_output.truth.ω)
 
-r_eci = mat_from_vec(sim_output.truth.r_eci)
-B_eci = mat_from_vec(sim_output.truth.B_eci)
-w = mat_from_vec(sim_output.truth.ω)
-# plot(sim_output.t_vec_orbital,vec(r_eci[1,:]))
+mat"
+figure
+hold on
+plot($sim_output.t_vec_attitude,$ω')
+"
 
-# plot orbital motion
-plot(vec(r_eci[1,:])/1e3,vec(r_eci[2,:])/1e3,vec(r_eci[3,:])/1e3,title = "Orbital Motion",
-label = "",xlabel = "ECI X (km)",ylabel = "ECI Y (km)", zlabel = "ECI Z (km)")
 
+
+
+
+
+
+
+# r_eci = mat_from_vec(sim_output.truth.r_eci)
+# B_eci = mat_from_vec(sim_output.truth.B_eci)
+# w = mat_from_vec(sim_output.truth.ω)
+# # plot(sim_output.t_vec_orbital,vec(r_eci[1,:]))
 #
-plot(sim_output.t_vec_orbital,vec(B_eci[1,:]),label = "B_x")
-plot!(sim_output.t_vec_orbital,vec(B_eci[2,:]),label = "B_y")
-plot!(sim_output.t_vec_orbital,vec(B_eci[3,:]), label = "B_z",title = "Magnetic Field in ECI (T)")
-
-plot(sim_output.t_vec_attitude,vec(w[1,:]))
-plot!(sim_output.t_vec_attitude,vec(w[2,:]))
-plot!(sim_output.t_vec_attitude,vec(w[3,:]),xlim = (0,21))
+# # plot orbital motion
+# plot(vec(r_eci[1,:])/1e3,vec(r_eci[2,:])/1e3,vec(r_eci[3,:])/1e3,title = "Orbital Motion",
+# label = "",xlabel = "ECI X (km)",ylabel = "ECI Y (km)", zlabel = "ECI Z (km)")
+#
+# #
+# plot(sim_output.t_vec_orbital,vec(B_eci[1,:]),label = "B_x")
+# plot!(sim_output.t_vec_orbital,vec(B_eci[2,:]),label = "B_y")
+# plot!(sim_output.t_vec_orbital,vec(B_eci[3,:]), label = "B_z",title = "Magnetic Field in ECI (T)")
+#
+# plot(sim_output.t_vec_attitude,vec(w[1,:]))
+# plot!(sim_output.t_vec_attitude,vec(w[2,:]))
+# plot!(sim_output.t_vec_attitude,vec(w[3,:]),xlim = (0,21))

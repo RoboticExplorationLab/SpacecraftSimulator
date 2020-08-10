@@ -1,0 +1,7 @@
+[deps]
+Infiltrator = "5903a43b-9cc3-4c30-8d17-598619ec4e9b"
+MATLAB = "10e44e05-a98a-55b3-a45b-ba969058deb6"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+SatelliteDynamics = "0e7c1a32-1b9f-5532-88a4-e668712d6a4c"
+SatelliteToolbox = "6ac157d9-b43d-51bb-8fab-48bf53814f4a"
+YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"

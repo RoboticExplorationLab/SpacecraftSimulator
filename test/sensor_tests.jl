@@ -5,8 +5,8 @@ ss_sim_path =  dirname(dirname(@__FILE__))
 include(joinpath(ss_sim_path,"load_julia_functions.jl"))
 
 path_to_yaml =  "sim/config_attitude_test.yml"
-params,initial_conditions, time_params = config(path_to_yaml)
-global params
+initial_conditions, time_params = config(path_to_yaml)
+
 
 @testset "sun_body" begin
     let
@@ -45,7 +45,7 @@ global params
             else
                 @test isapprox(I_flux,zeros(6),rtol = 1e-6)
             end
-            
+
 
         end
     end
