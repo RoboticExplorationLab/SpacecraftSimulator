@@ -1,7 +1,4 @@
-
-
-
-@show @__FILE__
+# @show @__FILE__
 
 ss_sim_path = dirname(@__FILE__)
 

@@ -1,4 +1,4 @@
-using LinearAlgebra, SatelliteDynamics
+using LinearAlgebra, SatelliteDynamics, Test
 
 
 # load in the julia and python functions
@@ -53,4 +53,8 @@ eci_mine = [r_eci;v_eci]
 
 error_mat = eci_SD - eci_mine
 
-@test isapprox(norm(error_mat),0.0,rtol = 1e-6)
+@testset "SD propagator reg test" begin
+
+        @test isapprox(norm(error_mat),0.0,rtol = 1e-6)
+
+end

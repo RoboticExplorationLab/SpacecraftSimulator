@@ -1,10 +1,13 @@
-using LinearAlgebra, SatelliteDynamics, SatelliteToolbox, MATLAB
+ss_sim_path =  dirname(dirname(@__FILE__))
 
+cd(joinpath(ss_sim_path,"virtual_env"))
+Pkg.activate(".")
+
+
+using LinearAlgebra, SatelliteDynamics, SatelliteToolbox, MATLAB, ProgressMeter
 using Infiltrator
-# using StaticArrays
-# using CSV
-# using DataFrames
-using ProgressMeter
+
+# keep namespaces consistent
 const SD = SatelliteDynamics
 const ST = SatelliteToolbox
 
@@ -21,6 +24,9 @@ function sim_driver(path_to_yaml)
 
     Args:
         path_to_yaml: path from SpacecraftSimulation directory to the yaml
+
+    Returns:
+        sim_output: named tuple with truth, obser
     """
 
     # load in the sim config yaml from the given path
@@ -72,8 +78,6 @@ function sim_driver(path_to_yaml)
     orbital_truth_struct_update!(truth,length(time_params.t_vec_orbital))
     attitude_truth_struct_update!(truth,length(time_params.t_vec_orbital),length(time_params.t_vec_attitude))
 
-    # timing
-    @show time() - t1
 
 
     return sim_output = (truth=truth, t_vec_orbital = time_params.t_vec_orbital,

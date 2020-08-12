@@ -90,7 +90,7 @@ function initialize_struct(struct_type_name   ::DataType,
         return truth
 end
 
-# AA = initialize_struct(AA_struct)
+
 
 function mat_from_vec(a::Array{Array{Float64,1},1})
 

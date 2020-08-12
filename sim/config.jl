@@ -92,11 +92,11 @@ function config(path_to_config_yaml)
                             eci_rv_0 = eci_rv_0,oe0 = oe0)
 
 
-      params = (sc=sc, time_params=time_params,initial_conditions=initial_conditions,
+      global params = (sc=sc, time_params=time_params,initial_conditions=initial_conditions,
                 grav_deg = grav_deg, grav_order = grav_order,
                 spherical_harmonic_gravity_bool = spherical_harmonic_gravity_bool)
 
-      const params
+
       return initial_conditions, time_params
 end
 

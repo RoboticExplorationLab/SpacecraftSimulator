@@ -58,9 +58,14 @@ gyro = y[1:3]
 r1b = y[4:6]
 r2b = y[7:9]
 
-noisy_gyro = gyro + fast_mvnrnd(sqrtR[1:3,1:3])
-noisy_r1b = S03_noise(r1b,sqrtR[4:6,4:6])
-noisy_r2b = S03_noise(r2b,sqrtR[7:9,7:9])
+
+noisy_gyro = params.sensors.offsets.gyroscope_offset*gyro + fast_mvnrnd(sqrtR[1:3,1:3])
+
+# sun sensor
+noisy_r1b = params.sensors.offsets.sun_sensor_offset*S03_noise(r1b,sqrtR[4:6,4:6])
+
+# magnetometer
+noisy_r2b = params.sensors.offsets.magnetometer_offset*S03_noise(r2b,sqrtR[7:9,7:9])
 
 noisy_y = [noisy_gyro;
            noisy_r1b;
@@ -84,6 +89,87 @@ function S03_noise(vector, sqrt_covariance)
     return noisy_vector
 end
 
+function slim_ekf_predict(mu,Sigma,tau,w_gyro,params,dt,Q)
+
+    # unpack state
+    # mu = mu[:];
+    q = mu[1:4]
+    beta = mu[5:7]
+
+    # predict
+    q_next = q ⊙ q_from_phi((w_gyro - beta)*dt)
+    beta_next = beta
+
+    mu_predict = [q_next;
+                  beta_next]
+
+    # jacobians
+    dphi_phi = I- hat((w_gyro - beta)*dt)
+    dphi_dbeta = -.5*dt*eye(3)
+    dbeta_beta = eye(3)
+
+    # dynamics jacobian (d_f/d_state)
+    A = [dphi_phi      dphi_dbeta;
+         zeros(3,3)    dbeta_beta]
+
+    # covariance prediction
+    # @infiltrate
+    # error()
+    Sigma_predict = A*Sigma*A' + Q
+
+    return mu_predict, Sigma_predict
+end
+
+function slim_ekf_innovate(mu_predict,Sigma_predict,yt,r1n,r2n,R)
+
+    """yt is just r1b and r2n"""
+
+    # predicted quaternion
+    q_predict = mu_predict[1:4]
+
+    # dcm
+    n_Q_bt = dcm_from_q(q_predict)
+
+    # use the predicted attitude to generate predicted measurements
+    r1b_t = transpose(n_Q_bt)*r1n
+    r2b_t = transpose(n_Q_bt)*r2n
+
+
+    # predicted measurment
+    yhat = [r1b_t;r2b_t]
+
+    # measurement difference
+    z = yt - yhat
+
+    # measurement Jacobian
+    C = [2*hat(r1b_t) zeros(3,3) ;
+         2*hat(r2b_t) zeros(3,3) ]
+
+    # covariance of the innovation
+    S = C*Sigma_predict*transpose(C) + R
+
+    # kalman gain
+    # L = Sigma_predict*C'*inv(S)
+    L = Sigma_predict*transpose(C)/S
+
+    # innovation
+    delta_mu = L*z
+
+    # update quaternion multiplicatively
+    q_update = q_predict ⊙ q_from_g(delta_mu[1:3])
+
+    # update bias additively
+    beta_update = mu_predict[5:7] + delta_mu[4:6]
+
+    # updated mu
+    mu_update = [ q_update ;
+                  beta_update]
+
+    # Sigma update
+    Sigma_update = (eye(6) - L*C)*Sigma_predict
+
+    return mu_update, Sigma_update
+end
 
 
 function ekf_predict(mu,Sigma,tau,params,dt,Q)
@@ -98,7 +184,7 @@ function ekf_predict(mu,Sigma,tau,params,dt,Q)
 
     # predict
     q_next = q ⊙ q_from_phi(w*dt)
-    wdot = params.invJ*(tau-cross(w,params.J*w))
+    wdot = params.sensors.Jinv_sample*(tau-cross(w,params.sensors.J_sample*w))
     w_next = w + wdot*dt
     beta_next = beta
 
@@ -109,7 +195,7 @@ function ekf_predict(mu,Sigma,tau,params,dt,Q)
     # jacobians
     dphi_phi = I- hat(w*dt)
     dphi_dw = .5*dt*eye(3)
-    dw_w = (I + dt*params.invJ*(hat(params.J*w) - hat(w)*params.J))
+    dw_w = (I + dt*params.sensors.Jinv_sample*(hat(params.sensors.J_sample*w) - hat(w)*params.sensors.J_sample))
     dbeta_beta = eye(3)
 
     # dynamics jacobian (d_f/d_state)
@@ -179,14 +265,24 @@ end
 function MEKF(mu,Sigma,tau,yt,Q,R,dt,r1n,r2n,params)
 
 # predict
-mu_predict,Sigma_predict = ekf_predict(mu,Sigma,tau,params,dt,Q);
+mu_predict,Sigma_predict = ekf_predict(mu,Sigma,tau,params,dt,Q)
 
 # innovate/update
-mu_update,Sigma_update = ekf_innovate(mu_predict,Sigma_predict,yt,r1n,r2n,R);
+mu_update,Sigma_update = ekf_innovate(mu_predict,Sigma_predict,yt,r1n,r2n,R)
 
     return mu_update, Sigma_update
 end
 
+function slim_MEKF(mu,Sigma,tau,w_gyro,yt,Q,R,dt,r1n,r2n,params)
+
+# predict
+mu_predict,Sigma_predict = slim_ekf_predict(mu,Sigma,tau,w_gyro,params,dt,Q)
+
+# innovate/update
+mu_update,Sigma_update = slim_ekf_innovate(mu_predict,Sigma_predict,yt,r1n,r2n,R)
+
+    return mu_update, Sigma_update
+end
 
 function triad_equal_error(r1,r2,b1,b2)
     # triad but with the errors spread equally between the two vectors
@@ -237,10 +333,10 @@ function rk4(ODE,tn,xn,u,sc,h)
 
     xn = xn[:]
 
-    k1 = h*ODE(tn,xn,u,sc);
-    k2 = h*ODE(tn + h/2,xn + k1/2,u,sc);
-    k3 = h*ODE(tn + h/2,xn + k2/2,u,sc);
-    k4 = h*ODE(tn + h,xn + k3,u,sc);
+    k1 = h*ODE(tn,xn,u,sc)
+    k2 = h*ODE(tn + h/2,xn + k1/2,u,sc)
+    k3 = h*ODE(tn + h/2,xn + k2/2,u,sc)
+    k4 = h*ODE(tn + h,xn + k3,u,sc)
 
     y_np1 = xn + (1/6)*(k1 + 2*k2 + 2*k3 + k4)
 
@@ -249,30 +345,77 @@ function rk4(ODE,tn,xn,u,sc,h)
 
 end
 
+function sample_inertia(J,deg_std,scale_std)
+
+    # take eigen decomposition
+    eigen_decomp = eigen(J)
+    D = diagm(eigen_decomp.values)
+    S = eigen_decomp.vectors
+
+    # scale the moments
+    D_sample = D*diagm(ones(3)+ scale_std*randn(3))
+
+    # rotate them
+    R_sample = exp(hat(deg2rad(deg_std)*randn(3)))
+    J_sample = R_sample*S*D_sample*S'*R_sample'
+
+    return J_sample
+end
+
 
 # %% Sim
 function run_MEKF()
 # % inertia
-J = diagm([1.0;2;3]);
-invJ = inv(J);
+J = [   1.959e-4    2016.333e-9     269.176e-9;
+     2016.333e-9       1.999e-4    2318.659e-9;
+      269.176e-9    2318.659e-9       1.064e-4]
+
+J_sample = sample_inertia(J,10.0,.1)
+
+sample_rate = 10
+
+sun_sensor = (offset_std = deg2rad(3),noise_std = deg2rad(10))
+magnetometer = (offset_std = deg2rad(3),noise_std = deg2rad(10))
+gyroscope = (offset_std = deg2rad(3),bias_walk_std = 1e-8,noise_std = deg2rad(sqrt(.07^2*sample_rate)))
+
+# generate offsets
+sun_sensor_offset = skew_expm(hat(sun_sensor.offset_std*randn(3)))
+magnetometer_offset = skew_expm(hat(magnetometer.offset_std*randn(3)))
+gyroscope_offset = skew_expm(hat(gyroscope.offset_std*randn(3)))
+
+# store offsets
+offsets = (sun_sensor_offset = sun_sensor_offset,
+           magnetometer_offset = magnetometer_offset,
+           gyroscope_offset = gyroscope_offset)
+
+# store all sensor information here
+sensors = (sun_sensor = sun_sensor,
+           magnetometer = magnetometer,
+           gyroscope = gyroscope,
+           offsets = offsets,
+           J_sample = J_sample,
+           Jinv_sample = inv(J_sample))
+
+# sc = (sensors = sensors, J_sampled = )
+
 # params.J = J; params.invJ = invJ;
-params = (J=J,invJ = invJ)
+params = (J=J,invJ = inv(J), sensors = sensors )
 
 # % initial conditions
 q0 = randq()
-w0 = deg2rad(5)*normalize(randn(3));
-beta0 = deg2rad.([1;-1;.5]);
+w0 = deg2rad(3)*normalize(randn(3))
+beta0 = deg2rad(3)*normalize(randn(3))
 
 # % two known vectors expressed in ECI
 r1n = normalize(randn(3));
 r2n = normalize(randn(3));
 
-# % time stuff
-dt = .05;
-tf = 2000.0;
-t_vec = 0:dt:tf;
+# time stuff
+dt = .1
+tf = 400.0
+t_vec = 0:dt:tf
 
-# % pre-allocate
+# pre-allocate
 state_hist = zeros(10,length(t_vec));
 meas_hist = zeros(9,length(t_vec));
 state_hist[1:4,1] = q0;
@@ -283,37 +426,48 @@ q_est_hist = zeros(4,length(t_vec));
 q_est_hist[:,1] = q0;
 angle_error = zeros(length(t_vec));
 ekf_angle_error = zeros(length(t_vec));
+slim_ekf_angle_error = zeros(length(t_vec));
 
 # % Process noise covariance
 Q = zeros(10,10);
-Q[8:10,8:10] = .0000001*eye(3);
-Q_ekf = .0000000001*eye(9);
+Q[8:10,8:10] = 1e-9*eye(3);
+Q_ekf = .000001*eye(9);
 Q_ekf[7:9,7:9] = Q[8:10,8:10];
 
 sqrtQ = sqrt(Q)
 # % Sensor noise covariance
-R_gyro = (deg2rad(1))^2*eye(3);
-R_sun_sensor = (deg2rad(5))^2*eye(3);
-R_magnetometer = (deg2rad(5))^2*eye(3);
-R = zeros(9,9);
-R[1:3,1:3] = R_gyro;
-R[4:6,4:6] = R_sun_sensor;
-R[7:9,7:9] = R_magnetometer;
-
+# R_gyro = (deg2rad(1))^2*eye(3);
+# R_sun_sensor = (deg2rad(5))^2*eye(3);
+# R_magnetometer = (deg2rad(5))^2*eye(3);
+R_gyro = params.sensors.gyroscope.noise_std^2*eye(3)
+R_sun_sensor = params.sensors.sun_sensor.noise_std^2*eye(3)
+R_magnetometer = params.sensors.magnetometer.noise_std^2*eye(3)
+R = zeros(9,9)
+R[1:3,1:3] = R_gyro
+R[4:6,4:6] = R_sun_sensor
+R[7:9,7:9] = R_magnetometer
+R_ekf = 4*R
 sqrtR = sqrt(R)
 
 # % external torque on spacecraft
-tau = zeros(3);
+tau = zeros(3)
 
 mekf_time = 0.0
 
 # % MEKF initialize
 EKF = EKF_struct(copy(fill(zeros(10),length(t_vec))),copy(fill(zeros(9,9),length(t_vec))))
-
+slim_EKF = EKF_struct(copy(fill(zeros(7),length(t_vec))),copy(fill(zeros(6,6),length(t_vec))))
 # mu = state_hist;
 # Sigma = cell(length(t_vec),1);
-EKF.mu[1] = state_hist[:,1]
-EKF.Sigma[1] = .01*eye(9);
+EKF.mu[1] = [state_hist[1:7,1];
+             zeros(3)]
+EKF.Sigma[1] = .1*eye(9);
+
+slim_EKF.mu[1] = [state_hist[1:4,1];
+                  zeros(3)]
+slim_EKF.Sigma[1] = .1*eye(6)
+
+slim = (Q = diagm([1e-6*ones(3);1e-9*ones(3)]),R = 1.5*diagm([diag(R_sun_sensor);diag(R_magnetometer)]))
 
 # % main loop
 @showprogress "Simulating..." for kk = 1:(length(t_vec)-1)
@@ -334,210 +488,102 @@ EKF.Sigma[1] = .01*eye(9);
     n_q_b_est, n_Q_b_est = triad_equal_error(r1n,r2n,r1b,r2b);
     q_est_hist[:,kk+1] = n_q_b_est;
 
-    # % triad angle error
+    # triad angle error
     angle_error[kk+1] = q_angle_error(state_hist[1:4,kk+1],n_q_b_est);
 
     # MEKF
-    t1 = time()
-    @profile EKF.mu[kk+1], EKF.Sigma[kk+1] = MEKF(EKF.mu[kk],EKF.Sigma[kk],tau,meas_hist[:,kk+1],Q_ekf,R,dt,r1n,r2n,params)
+    EKF.mu[kk+1], EKF.Sigma[kk+1] = MEKF(EKF.mu[kk],EKF.Sigma[kk],tau,meas_hist[:,kk+1],Q_ekf,R_ekf,dt,r1n,r2n,params)
+    slim_EKF.mu[kk+1], slim_EKF.Sigma[kk+1] = slim_MEKF(slim_EKF.mu[kk],slim_EKF.Sigma[kk],tau,meas_hist[1:3,kk],meas_hist[4:9,kk+1],slim.Q,slim.R,dt,r1n,r2n,params)
 
-    @infiltrate
-    error()
-
-    mekf_time += time()-t1
     # % MEKF angle error
     ekf_angle_error[kk+1] = q_angle_error(state_hist[1:4,kk+1],EKF.mu[kk+1][1:4]);
+    slim_ekf_angle_error[kk+1] = q_angle_error(state_hist[1:4,kk+1],slim_EKF.mu[kk+1][1:4]);
 end
 
-display(plot(t_vec,rad2deg.(ekf_angle_error),label = "MEKF"))
-display(plot!(t_vec,rad2deg.(angle_error),label = "Triad"))
+mat"
+figure
+hold on
+plot($t_vec,rad2deg($ekf_angle_error))
+plot($t_vec,rad2deg($slim_ekf_angle_error))
+plot($t_vec,rad2deg($angle_error),'.')
+legend('MEKF','Slim MEKF','Triad')
+xlabel('Time (s)')
+ylabel('Pointing Error (deg)')
+title('Triad and MEKF Errors')
+"
 
-println("Done!")
-@show mekf_time
+# @show mekf_time
 
+return t_vec, meas_hist, state_hist, EKF, slim_EKF
 end
 
 
-run_MEKF()
-# %% plotting
-# q_hist = state_hist(1:4,:);
-# omega_hist = state_hist(5:7,:);
-# beta_hist = state_hist(8:10,:);
-#
-# % figure
-# % hold on
-# % title('True \omega')
-# % plot(t_vec,omega_hist(1,:))
-# % plot(t_vec,omega_hist(2,:))
-# % plot(t_vec,omega_hist(3,:))
-# % hold off
-#
-# % figure
-# % hold on
-# % title('True quaternion')
-# % plot(t_vec,q_hist(1,:))
-# % plot(t_vec,q_hist(2,:))
-# % plot(t_vec,q_hist(3,:))
-# % plot(t_vec,q_hist(4,:))
-# % hold off
-#
-# figure
-# hold on
-# title('est quaternion')
-# plot(t_vec,q_est_hist(1,:))
-# plot(t_vec,q_est_hist(2,:))
-# plot(t_vec,q_est_hist(3,:))
-# plot(t_vec,q_est_hist(4,:))
-# hold off
-#
-#
-# figure
-# hold on
-# title('Bias')
-# plot(t_vec,rad2deg(beta_hist(1,:)))
-# plot(t_vec,rad2deg(beta_hist(2,:)))
-# plot(t_vec,rad2deg(beta_hist(3,:)))
-# hold off
-#
-# figure
-# hold on
-# title('Triad Error and MEKF Error (Attitude)')
-# plot(t_vec,rad2deg(angle_error),'.')
-# plot(t_vec,rad2deg(ekf_angle_error))
-# ylabel('Attitude Error (deg)')
-# xlabel('Time (s)')
-# legend('Triad','MEKF')
-# hold off
-# %
-# % figure
-# % hold on
-# % plot(t_vec,ekf_angle_error)
-# % hold off
-#
-# %% measurement
-# % figure
-# % hold on
-# % title('Gyro Measurement')
-# % plot(t_vec,meas_hist(1,:))
-# % plot(t_vec,meas_hist(2,:))
-# % plot(t_vec,meas_hist(3,:))
-# % legend('\omega_x','\omega_y','\omega_z')
-# % hold off
-#
-# figure
-# hold on
-# sgtitle('Gyro Measurement')
-#
-# subplot(3,1,1)
-# hold on
-# plot(t_vec,rad2deg(meas_hist(1,:)))
-# ylabel('\omega_x (deg/s)')
-# hold off
-#
-# subplot(3,1,2)
-# hold on
-# plot(t_vec,rad2deg(meas_hist(2,:)))
-# ylabel('\omega_y (deg/s)')
-# hold off
-#
-# subplot(3,1,3)
-# hold on
-# plot(t_vec,rad2deg(meas_hist(3,:)))
-# ylabel('\omega_z (deg/s)')
-# hold off
-# xlabel('Time (s)')
-#
-#
-# figure
-# hold on
-# title('MEKF \omega')
-# plot(t_vec,mu(5,:))
-# plot(t_vec,mu(6,:))
-# plot(t_vec,mu(7,:))
-# legend('\omega_x','\omega_y','\omega_z')
-# hold off
-# %
-# % % get errors
-# %
-# % y_error = abs(state_hist(1:3,:) - meas_hist);
-# ekf_error = abs(state_hist - mu);
-#
-# w_error = ekf_error(5:7,:);
-# beta_error = ekf_error(8:10,:);
+t_vec, meas_hist, state_hist, EKF, slim_EKF = run_MEKF()
 
 
-# figure
-# hold on
-# sgtitle('Angular Velocity Error')
-#
-# subplot(3,1,1)
-# hold on
-# plot(t_vec,rad2deg(w_error(1,:)))
-# ylabel('\Delta \omega_x (deg/s)')
-# hold off
-#
-# subplot(3,1,2)
-# hold on
-# plot(t_vec,rad2deg(w_error(2,:)))
-# ylabel('\Delta \omega_y (deg/s)')
-# hold off
-#
-# subplot(3,1,3)
-# hold on
-# plot(t_vec,rad2deg(w_error(3,:)))
-# ylabel('\Delta \omega_z (deg/s)')
-# hold off
-# xlabel('Time (s)')
-#
-# figure
-# hold on
-# sgtitle('Gyro Bias Error')
-#
-# subplot(3,1,1)
-# hold on
-# plot(t_vec,rad2deg(beta_error(1,:)))
-# ylabel('\Delta b_x (deg/s)')
-# hold off
-#
-# subplot(3,1,2)
-# hold on
-# plot(t_vec,rad2deg(beta_error(2,:)))
-# ylabel('\Delta b_y (deg/s)')
-# hold off
-#
-# subplot(3,1,3)
-# hold on
-# plot(t_vec,rad2deg(beta_error(3,:)))
-# ylabel('\Delta b_z (deg/s)')
-# hold off
-# xlabel('Time (s)')
-# %
-# % figure
-# % hold on
-# % title('Measuremnt error')
-# % plot(t_vec,y_error(1,:))
-# % plot(t_vec,y_error(2,:))
-# % plot(t_vec,y_error(3,:))
-# % hold off
-# %
-# % figure
-# % hold on
-# % title('EKF error')
-# % plot(t_vec,ekf_error(1,:))
-# % plot(t_vec,ekf_error(2,:))
-# % plot(t_vec,ekf_error(3,:))
-# % hold off
-# %
-# % figure
-# % hold on
-# % title('EKF bias error')
-# % plot(t_vec,ekf_error(4,:))
-# % plot(t_vec,ekf_error(5,:))
-# % plot(t_vec,ekf_error(6,:))
-# % hold off
+ekf_mu= mat_from_vec(EKF.mu)
+slim_ekf_mu= mat_from_vec(slim_EKF.mu)
+# meas_hist = mat_from_vec(meas_hist)
 
-t1 = time()
-for i = 1:40000
-    inv(randn(9,9))
+w_hist = state_hist[5:7,:]
+b_hist = state_hist[8:10,:]
+ekf_w = ekf_mu[5:7,:]
+ekf_b = ekf_mu[8:10,:]
+gyro_w = meas_hist[1:3,:]
+slim_ekf_w = gyro_w - slim_ekf_mu[5:7,:]
+slim_ekf_b = slim_ekf_mu[5:7,:]
+
+N = size(w_hist,2)
+ekf_w_error = zeros(N)
+ekf_b_error = zeros(N)
+slim_ekf_w_error = zeros(N)
+slim_ekf_b_error = zeros(N)
+for i = 1:N
+
+    ekf_w_error[i] = norm(ekf_w[:,i] - w_hist[:,i])
+    slim_ekf_w_error[i] = norm(slim_ekf_w[:,i] - w_hist[:,i])
+    ekf_b_error[i] = norm(ekf_b[:,i] - b_hist[:,i])
+    slim_ekf_b_error[i] = norm(slim_ekf_b[:,i] - b_hist[:,i])
+
 end
-@show time() - t1
+
+mat"
+figure
+hold on
+title('Angular Velocity Error')
+plot($t_vec,rad2deg($ekf_w_error),'.')
+plot($t_vec,rad2deg($slim_ekf_w_error),'.')
+legend('MEKF','slim MEKF')
+ylabel('Angular Velocity Error (deg/s)')
+xlabel('Time (s)')
+xlim([10,400])
+hold off
+"
+
+mat"
+figure
+hold on
+title('Gyro Bias Error')
+plot($t_vec,rad2deg($ekf_b_error))
+plot($t_vec,rad2deg($slim_ekf_b_error))
+legend('MEKF','slim MEKF')
+xlim([10,400])
+hold off
+"
+
+# mat"figure
+# hold on
+# title('Angular Velocity')
+# % plot($t_vec,rad2deg($slim_ekf_w'))
+# plot($t_vec,rad2deg($ekf_w'))
+# plot($t_vec,rad2deg($w_hist'))
+# hold off
+# "
+# mat"figure
+# hold on
+# title('Gyro Bias')
+# % plot($t_vec,rad2deg($slim_ekf_w'))
+# plot($t_vec,rad2deg($ekf_b'))
+# plot($t_vec,rad2deg($b_hist'))
+# hold off
+# "
