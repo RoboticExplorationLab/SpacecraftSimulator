@@ -3,7 +3,7 @@
 #------------------------------TRUTH models------------------------------------
 
 function sun_body_normalized(r_sun_eci,r_eci,ᴺQᴮ)
-    # posiiton vector from spacecraft to sun
+    # positon vector from spacecraft to sun
     sc_r_sun = r_sun_eci - r_eci
 
     # normalize and express in the body frame
@@ -14,8 +14,8 @@ function sun_flux(r_sun_eci,r_eci,ᴺQᴮ,eclipse)
     """Gets the true flux values for each coarse sun sensor
 
     Args:
-        r_sun_eci: position vector from eci to sun
-        r_eci: sc position vector from eci to sc
+        r_sun_eci: position vector from eci0 to sun
+        r_eci: sc position vector from eci0 to sc
         ᴺQᴮ: DCM relating eci (N) and body (B)
         eclipse:
 
@@ -61,25 +61,85 @@ end
 #------------------Linear Error Model------------------------------------------
 
 
+function sample_inertia(J,deg_std,scale_std)
 
+    # take eigen decomposition
+    eigen_decomp = eigen(J)
+    D = diagm(eigen_decomp.values)
+    S = eigen_decomp.vectors
 
-function create_LEM_offset(scale_factor::Vec,cross_axis_sensitivity::Float64)::Mat
+    # scale the moments
+    D_sample = D*diagm(ones(3)+ scale_std*randn(3))
 
-    scale_mat = sqrt(diagm(scale_factor))*randn(length(scale_factor))
+    # rotate them
+    R_sample = exp(hat(deg2rad(deg_std)*randn(3)))
+    J_sample = R_sample*S*D_sample*S'*R_sample'
 
-    cas = cross_axis_sensitivity
-    cross_axis_mat = [1                  sqrt(cas)*randn() sqrt(cas)*randn();
-                      sqrt(cas)*randn()  1                 sqrt(cas)*randn();
-                      sqrt(cas)*randn()  sqrt(cas)*randn() 1                ]
+    return J_sample
+end
 
-    A_error = (I + scale_mat)*cross_axis_mat
+function S03_noise(vector, noise_std)
+    # here we add noise S03 style
 
-    return A_error
+    # noise axis angle vector
+    phi_noise = noise_std*randn(3)
+
+    # apply the noise rotation to the vector
+    noisy_vector = dcm_from_phi(phi_noise)*vector
+
+    return noisy_vector
+end
+
+function measurements(truth,orb_ind,index_n)
+
+    # genereate gyro
+    true_ω = truth.ω[index_n]
+    gyro_offset = params.sensors.offsets.gyro
+    # TODO: include bias dynamics in there somewhere
+    gyro_bias = params.sensors.offsets.gyro_bias
+    gyro_noise = deg2rad(params.sensors.gyro.noise_std_degps)*randn(3)
+    meas_ω = gyro_offset*true_ω + gyro_bias + gyro_noise
+
+    # generate sun sensor
+    true_sun_body = truth.sun_body[index_n]
+    sun_sensor_offset = params.sensors.offsets.sun_sensor
+    meas_sun_sensor = S03_noise(sun_sensor_offset*true_sun_body,
+                      deg2rad(params.sensors.sun_sensor.noise_std_deg))
+
+    # generate magnetometer
+    true_B_body = normalize(truth.B_body[index_n])
+    magnetometer_offset = params.sensors.offsets.magnetometer
+    meas_B_body = S03_noise(magnetometer_offset*true_B_body,
+                      deg2rad(params.sensors.magnetometer.noise_std_deg))
+
+    # @infiltrate
+    # error()
+    return meas_ω, meas_sun_sensor, meas_B_body
 
 end
 
-function add_LEM_noise(true_vector,A_error, bias, sqrt_noise_cov)
 
-    return A_error*true_vector + bias + sqrt_noise_cov*randn(length(true_vector))
 
-end
+
+
+
+# function create_LEM_offset(scale_factor::Vec,cross_axis_sensitivity::Float64)::Mat
+#
+#     scale_mat = sqrt(diagm(scale_factor))*randn(length(scale_factor))
+#
+#     cas = cross_axis_sensitivity
+#     cross_axis_mat = [1                  sqrt(cas)*randn() sqrt(cas)*randn();
+#                       sqrt(cas)*randn()  1                 sqrt(cas)*randn();
+#                       sqrt(cas)*randn()  sqrt(cas)*randn() 1                ]
+#
+#     A_error = (I + scale_mat)*cross_axis_mat
+#
+#     return A_error
+#
+# end
+#
+# function add_LEM_noise(true_vector,A_error, bias, sqrt_noise_cov)
+#
+#     return A_error*true_vector + bias + sqrt_noise_cov*randn(length(true_vector))
+#
+# end

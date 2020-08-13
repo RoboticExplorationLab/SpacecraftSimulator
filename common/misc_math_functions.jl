@@ -195,6 +195,42 @@ function ortho_logm(Q::Mat)::Mat
     return skew_from_vec(phi)
 end
 
+function phi_from_dcm(Q::Mat)::Vec
+    # TODO: test this
+    """Matrix logarithm for 3x3 orthogonal matrices (like DCM's).
+
+    Summary:
+        This is both faster and more robust than log.jl (180 degree rotations)
+
+    Args:
+        Q: orthogonal matrix (like a DCM) :: AbstractArray{Float64,2}
+
+    Returns:
+        skew symmetric matrix :: AbstractArray{Float64,2}
+    """
+
+    val = (tr(Q) - 1) / 2
+
+    if abs(val - 1) < 1e-10
+        # no rotation
+        phi = [0.0; 0.0; 0.0]
+    elseif abs(val + 1) < 1e-10
+        # 180 degree rotation
+        M = I + Q
+        r = M[1, :] / norm(M[1, :])
+        theta = pi
+        phi = r * theta
+    else
+        # normal rotation (0-180 degrees)
+        theta = acos(val)
+        r = -(1 / (2 * sin(theta))) *
+            [Q[2, 3] - Q[3, 2]; Q[3, 1] - Q[1, 3]; Q[1, 2] - Q[2, 1]]
+        phi = r * theta
+    end
+
+    return phi
+end
+
 function rand_in_range(lower::Real, upper::Real)::Real
     """Random number within range with a uniform distribution.
 

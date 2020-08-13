@@ -34,6 +34,14 @@ function sim_driver(path_to_yaml)
 
     # pre-allocate structs/arrays for storage
     truth = initialize_struct(truth_state_struct,time_params,initial_conditions)
+    sensors = initialize_sensors_struct(time_params)
+    MEKF = initialize_mekf_struct(time_params)
+
+    # MEKF
+    initialize_mekf!(MEKF,truth)
+
+    # triad
+    q_triad = fill(zeros(4),length(time_params.t_vec_attitude))
 
     # main loop
     t1 = time()
@@ -52,12 +60,24 @@ function sim_driver(path_to_yaml)
             # update the derived state
             attitude_truth_struct_update!(truth,orb_ind,index_n)
 
+            # generate measurements
+            sensors_update!(sensors, truth,orb_ind,index_n)
+
             # disturbance torques
             τ = zeros(3)
 
+            # --------------------MEKF--------------------------------
+            if index_n>1
+                mekf!(MEKF,τ,sensors,orb_ind,index_n)
+            end
+
+            # -------------------TRIAD--------------------------------
+            q_triad[index_n] = triad_equal_error(sensors.sun_eci[orb_ind],sensors.B_eci[orb_ind],
+                                                 sensors.sun_body[index_n],sensors.B_body[index_n])
             # ------------------ control law -------------------------
             sc_mag_moment = zeros(3)
 
+            # -------------------integration--------------------------
             truth.ᴺqᴮ[index_n+1], truth.ω[index_n+1] =rk4_attitude(spacecraft_eom,
             truth.epc_orbital, [truth.ᴺqᴮ[index_n];truth.ω[index_n]], sc_mag_moment, truth.B_eci[orb_ind], τ, time_params.dt_attitude)
 
@@ -76,31 +96,80 @@ function sim_driver(path_to_yaml)
 
     # derive quantities for the last step
     orbital_truth_struct_update!(truth,length(time_params.t_vec_orbital))
-    attitude_truth_struct_update!(truth,length(time_params.t_vec_orbital),length(time_params.t_vec_attitude))
-
+    attitude_truth_struct_update!(truth,length(time_params.t_vec_orbital),
+                                  length(time_params.t_vec_attitude))
+    sensors_update!(sensors, truth,length(time_params.t_vec_orbital),
+                                  length(time_params.t_vec_attitude))
 
 
     return sim_output = (truth=truth, t_vec_orbital = time_params.t_vec_orbital,
-                         t_vec_attitude = time_params.t_vec_attitude)
+                         t_vec_attitude = time_params.t_vec_attitude, sensors,
+                         MEKF = MEKF, q_triad)
     # return sim_output = (
 end
 
-path_to_yaml = "sim/config_attitude_test.yml"
+path_to_yaml = "sim/config_attitude_test0.yml"
 sim_output = sim_driver(path_to_yaml)
 
+q = mat_from_vec(sim_output.truth.ᴺqᴮ)
 ω = mat_from_vec(sim_output.truth.ω)
+
+q_triad = mat_from_vec(sim_output.q_triad)
+
+mu = mat_from_vec(sim_output.MEKF.mu)
+mu_w = mu[5:7,:]
+gyro = mat_from_vec(sim_output.sensors.ω)
+
+
+N = size(mu_w,2)
+mekf_point_error = zeros(N)
+triad_point_error = zeros(N)
+for i = 1:N
+    mekf_point_error[i] = q_angle_error(sim_output.truth.ᴺqᴮ[i],mu[1:4,i])
+    triad_point_error[i] = q_angle_error(sim_output.truth.ᴺqᴮ[i],q_triad[:,i])
+end
+
 
 mat"
 figure
 hold on
-plot($sim_output.t_vec_attitude,$ω')
+plot($sim_output.t_vec_attitude, rad2deg($triad_point_error))
+plot($sim_output.t_vec_attitude, rad2deg($mekf_point_error))
+hold off
 "
 
-
-
-
-
-
+# mat"
+# figure
+# hold on
+# plot($sim_output.t_vec_attitude,$q')
+# plot($sim_output.t_vec_attitude,$q_triad')
+# %plot($sim_output.t_vec_attitude,$mu(1:4,:)')
+# "
+#
+#
+# mat"
+# figure
+# hold on
+# plot($sim_output.t_vec_attitude, $mekf_point_error)
+# hold off
+# "
+mat"
+figure
+hold on
+plot($sim_output.t_vec_attitude,$ω')
+plot($sim_output.t_vec_attitude,$gyro')
+"
+mat"
+figure
+hold on
+plot($sim_output.t_vec_attitude,$ω')
+plot($sim_output.t_vec_attitude,$mu_w')
+"
+#
+#
+#
+#
+#
 
 
 # r_eci = mat_from_vec(sim_output.truth.r_eci)

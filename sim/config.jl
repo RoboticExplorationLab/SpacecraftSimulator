@@ -18,6 +18,8 @@ function config(path_to_config_yaml)
       init_oe = data["initial_orbital_elements"]
       propagator_parameters = data["propagator_parameters"]
       initial_attitude_conditions = data["initial_attitude_conditions"]
+      inertia_properties = data["inertia_properties"]
+      sensor_properties = data["sensor_properties"]
 
       # inertia matrix
       J = [sc_properties["inertia_rows"][1]';
@@ -91,10 +93,43 @@ function config(path_to_config_yaml)
       initial_conditions = (epc_orbital = epc_orbital,ᴺqᴮ0=ᴺqᴮ0,ω0=ω0,
                             eci_rv_0 = eci_rv_0,oe0 = oe0)
 
+      # sample inertia
+      if inertia_properties["sample_new"]
+            J_sample = sample_inertia(J,
+                                      inertia_properties["rotate_std_deg"],
+                                      inertia_properties["scale_std"])
+      else
+            J_sample = copy(J)
+      end
+
+      # generate sensor offests
+      gyro_properties = sensor_properties["gyro"]
+      sun_sensor_properties = sensor_properties["sun_sensor"]
+      magnetometer_properties = sensor_properties["magnetometer"]
+
+      gyro = (rotate_std_deg   = gyro_properties["rotate_std_deg"],
+              noise_std_degps  = gyro_properties["noise_std_degps"],
+              initial_bias_deg = gyro_properties["initial_bias_deg"],
+              bias_noise_std   = gyro_properties["bias_noise_std"])
+
+      sun_sensor = (rotate_std_deg = sun_sensor_properties["rotate_std_deg"],
+                    noise_std_deg  = sun_sensor_properties["noise_std_deg"])
+
+      magnetometer=(rotate_std_deg = magnetometer_properties["rotate_std_deg"],
+                    noise_std_deg  = magnetometer_properties["noise_std_deg"])
+
+      offsets = (gyro = dcm_from_phi(deg2rad(gyro.rotate_std_deg)*randn(3)),
+      gyro_bias = deg2rad(gyro.initial_bias_deg)*normalize(randn(3)),
+      sun_sensor = dcm_from_phi(deg2rad(sun_sensor.rotate_std_deg)*randn(3)),
+      magnetometer=dcm_from_phi(deg2rad(magnetometer.rotate_std_deg)*randn(3)))
+
+      sensors = (gyro = gyro, sun_sensor = sun_sensor, magnetometer=magnetometer,
+      offsets = offsets,J = J_sample, invJ = inv(J_sample))
 
       global params = (sc=sc, time_params=time_params,initial_conditions=initial_conditions,
                 grav_deg = grav_deg, grav_order = grav_order,
-                spherical_harmonic_gravity_bool = spherical_harmonic_gravity_bool)
+                spherical_harmonic_gravity_bool = spherical_harmonic_gravity_bool,
+                sensors = sensors)
 
 
       return initial_conditions, time_params
