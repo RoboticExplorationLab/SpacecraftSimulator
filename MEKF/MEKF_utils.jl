@@ -34,11 +34,13 @@ function initialize_mekf_struct(time_params::NamedTuple)::MEKF_struct
 
 end
 
-function initialize_mekf!(MEKF,truth)
+function initialize_mekf!(MEKF::MEKF_struct,truth::truth_state_struct)
 
+    # process noise covariance
     MEKF.Q .= diagm(1e-12*ones(9))
     MEKF.Q[7:9,7:9] .= diagm(params.sensors.gyro.bias_noise_std^2*ones(3))
 
+    # sensor noise covariance
     R_gyro = deg2rad(params.sensors.gyro.noise_std_degps)^2*ones(3)
     R_sun_sensor = deg2rad(params.sensors.sun_sensor.noise_std_deg)^2*ones(3)
     R_magnetometer = deg2rad(params.sensors.magnetometer.noise_std_deg)^2*ones(3)

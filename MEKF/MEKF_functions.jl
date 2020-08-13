@@ -214,10 +214,10 @@ function triad_equal_error(r1::Vec,r2::Vec,b1::Vec,b2::Vec)
     a1 = .5
     a2 = .5
 
-    normalize!(r1)
-    normalize!(r2)
-    normalize!(b1)
-    normalize!(b2)
+    r1 = copy(normalize(r1))
+    r2 = copy(normalize(r2))
+    b1 = copy(normalize(b1))
+    b2 = copy(normalize(b2))
 
     r3 = normalize(cross(r1,r2))
     b3 = normalize(cross(b1,b2))

@@ -44,7 +44,7 @@ propagator_parameters:
   dt_orbital:      10.0                      # sec
   dt_attitude:     0.1                      # sec
   dt_controller:   0.05                       # sec
-  final_time_days: 0.003                     # days
+  final_time_days: 0.01                     # days
 
 inertia_properties:
   sample_new:       false

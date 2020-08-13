@@ -421,3 +421,13 @@ function dcm_from_p(p::Vec)::Mat
     sp = skew_from_vec(p)
     return I + (8*sp^2 + 4*(1 - dot(p,p))*sp)/(1 + dot(p,p))^2
 end
+
+function pdot_from_w(p::Vec,w::Vec)::Vec
+# % this is the kinematics of the modified rodrigues parameter assuming that
+# % attitude is being denoted as N_R_B using the kane/levinson convention
+# p = p(:);
+# w = w(:);
+
+return ((1+norm(p)^2)/4)*(eye(3) + 2*(hat(p)^2 + hat(p))/(1+norm(p)^2))*w
+
+end
