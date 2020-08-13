@@ -2,7 +2,7 @@
 
 #------------------------------TRUTH models------------------------------------
 
-function sun_body_normalized(r_sun_eci,r_eci,ᴺQᴮ)
+function sun_body_normalized(r_sun_eci::Vec,r_eci::Vec,ᴺQᴮ::Mat)::Vec
     # positon vector from spacecraft to sun
     sc_r_sun = r_sun_eci - r_eci
 
@@ -10,7 +10,7 @@ function sun_body_normalized(r_sun_eci,r_eci,ᴺQᴮ)
     return transpose(ᴺQᴮ)*normalize(sc_r_sun)
 end
 
-function sun_flux(r_sun_eci,r_eci,ᴺQᴮ,eclipse)
+function sun_flux(r_sun_eci::Vec,r_eci::Vec,ᴺQᴮ::Mat,eclipse::Bool)::Vec
     """Gets the true flux values for each coarse sun sensor
 
     Args:
@@ -40,7 +40,7 @@ function sun_flux(r_sun_eci,r_eci,ᴺQᴮ,eclipse)
 
 end
 
-function s_body_from_I(I_vec)
+function s_body_from_I(I_vec::Vec)::Vec
     """Get unit sun vector expressed in the body frame from solar flux values.
 
     Args:
@@ -61,7 +61,7 @@ end
 #------------------Linear Error Model------------------------------------------
 
 
-function sample_inertia(J,deg_std,scale_std)
+function sample_inertia(J::Mat,deg_std::Float64,scale_std::Float64)::Mat
 
     # take eigen decomposition
     eigen_decomp = eigen(J)
@@ -78,7 +78,7 @@ function sample_inertia(J,deg_std,scale_std)
     return J_sample
 end
 
-function S03_noise(vector, noise_std)
+function S03_noise(vector::Vec, noise_std::Float64)
     # here we add noise S03 style
 
     # noise axis angle vector
@@ -90,7 +90,7 @@ function S03_noise(vector, noise_std)
     return noisy_vector
 end
 
-function measurements(truth,orb_ind,index_n)
+function measurements(truth::truth_state_struct,orb_ind::Int,index_n::Int)
 
     # genereate gyro
     true_ω = truth.ω[index_n]

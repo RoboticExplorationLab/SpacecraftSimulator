@@ -26,7 +26,7 @@ function sim_driver(path_to_yaml)
         path_to_yaml: path from SpacecraftSimulation directory to the yaml
 
     Returns:
-        sim_output: named tuple with truth, obser
+        sim_output: named tuple
     """
 
     # load in the sim config yaml from the given path
@@ -68,7 +68,15 @@ function sim_driver(path_to_yaml)
 
             # --------------------MEKF--------------------------------
             if index_n>1
-                mekf!(MEKF,τ,sensors,orb_ind,index_n)
+                # mekf!(MEKF,τ,sensors,orb_ind,index_n)
+                yt = [sensors.ω[index_n];
+                      sensors.sun_body[index_n];
+                      sensors.B_body[index_n]]
+
+                MEKF.mu[index_n], MEKF.Sigma[index_n] = mekf(MEKF.mu[index_n-1],
+                    MEKF.Sigma[index_n-1],τ,normalize(sensors.sun_eci[orb_ind]),
+                    normalize(sensors.B_eci[orb_ind]),yt,MEKF.Q,MEKF.R,
+                    params.time_params.dt_attitude,sensors.J,sensors.invJ)
             end
 
             # -------------------TRIAD--------------------------------
@@ -95,17 +103,23 @@ function sim_driver(path_to_yaml)
     end
 
     # derive quantities for the last step
+    index_n = length(time_params.t_vec_attitude)
+    orb_ind = length(time_params.t_vec_orbital)
     orbital_truth_struct_update!(truth,length(time_params.t_vec_orbital))
     attitude_truth_struct_update!(truth,length(time_params.t_vec_orbital),
                                   length(time_params.t_vec_attitude))
     sensors_update!(sensors, truth,length(time_params.t_vec_orbital),
                                   length(time_params.t_vec_attitude))
-
+    yt = [sensors.ω[index_n];sensors.sun_body[index_n];sensors.B_body[index_n]]
+    # MEKF.mu[index_n], MEKF.Sigma[index_n] = mekf(MEKF.mu[index_n-1],
+    #         MEKF.Sigma[index_n-1],τ,normalize(sensors.sun_eci[orb_ind]),
+    #         normalize(sensors.B_eci[orb_ind]),yt,MEKF.Q,MEKF.R,
+    #         params.time_params.dt_attitude,sensors.J,sensors.invJ)
 
     return sim_output = (truth=truth, t_vec_orbital = time_params.t_vec_orbital,
                          t_vec_attitude = time_params.t_vec_attitude, sensors,
                          MEKF = MEKF, q_triad)
-    # return sim_output = (
+
 end
 
 path_to_yaml = "sim/config_attitude_test0.yml"
@@ -133,7 +147,7 @@ end
 mat"
 figure
 hold on
-plot($sim_output.t_vec_attitude, rad2deg($triad_point_error))
+plot($sim_output.t_vec_attitude, rad2deg($triad_point_error),'.')
 plot($sim_output.t_vec_attitude, rad2deg($mekf_point_error))
 hold off
 "
@@ -165,27 +179,3 @@ hold on
 plot($sim_output.t_vec_attitude,$ω')
 plot($sim_output.t_vec_attitude,$mu_w')
 "
-#
-#
-#
-#
-#
-
-
-# r_eci = mat_from_vec(sim_output.truth.r_eci)
-# B_eci = mat_from_vec(sim_output.truth.B_eci)
-# w = mat_from_vec(sim_output.truth.ω)
-# # plot(sim_output.t_vec_orbital,vec(r_eci[1,:]))
-#
-# # plot orbital motion
-# plot(vec(r_eci[1,:])/1e3,vec(r_eci[2,:])/1e3,vec(r_eci[3,:])/1e3,title = "Orbital Motion",
-# label = "",xlabel = "ECI X (km)",ylabel = "ECI Y (km)", zlabel = "ECI Z (km)")
-#
-# #
-# plot(sim_output.t_vec_orbital,vec(B_eci[1,:]),label = "B_x")
-# plot!(sim_output.t_vec_orbital,vec(B_eci[2,:]),label = "B_y")
-# plot!(sim_output.t_vec_orbital,vec(B_eci[3,:]), label = "B_z",title = "Magnetic Field in ECI (T)")
-#
-# plot(sim_output.t_vec_attitude,vec(w[1,:]))
-# plot!(sim_output.t_vec_attitude,vec(w[2,:]))
-# plot!(sim_output.t_vec_attitude,vec(w[3,:]),xlim = (0,21))

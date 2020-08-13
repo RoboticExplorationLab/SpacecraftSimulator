@@ -1,13 +1,13 @@
 using LinearAlgebra
 
-mutable struct EKF_struct
-    mu::Array{Array{Float64,1},1}
-    Sigma::Array{Array{Float64,2},1}
-end
+# mutable struct EKF_struct
+#     mu::Array{Array{Float64,1},1}
+#     Sigma::Array{Array{Float64,2},1}
+# end
 
 
 
-function mekf_g(x,r1n, r2n)
+function mekf_g(x::Vec,r1n::Vec, r2n::Vec)::Vec
 
     # x = x[:];
     q = x[1:4]
@@ -30,7 +30,7 @@ function mekf_g(x,r1n, r2n)
 end
 
 
-function ekf_predict(mu,Sigma,tau,dt,Q,sensors)
+function ekf_predict(mu::Vec,Sigma::Mat,tau::Vec,dt::Float64,Q::Mat,sensors::sensor_state_struct)::Tuple{Vec,Mat}
 
     # tn = 0;
 
@@ -70,8 +70,43 @@ function ekf_predict(mu,Sigma,tau,dt,Q,sensors)
     return mu_predict, Sigma_predict
 end
 
+function ekf_predict(mu::Vec,Sigma::Mat,tau::Vec,dt::Float64,Q::Mat,
+                     J::Mat,invJ::Mat)::Tuple{Vec,Mat}
 
-function ekf_innovate(mu_predict,Sigma_predict,yt,r1n,r2n,R)
+    # unpack state
+    q = mu[1:4]
+    w = mu[5:7]
+    beta = mu[8:10]
+
+    # predict
+    q_next = q ⊙ q_from_phi(w*dt)
+    wdot = invJ*(tau-cross(w,J*w))
+    w_next = w + wdot*dt
+    beta_next = beta
+
+    mu_predict = [q_next;
+                  w_next;
+                  beta_next]
+
+    # jacobians
+    dphi_phi = I- hat(w*dt)
+    dphi_dw = .5*dt*eye(3)
+    dw_w = (I + dt*invJ*(hat(J*w) - hat(w)*J))
+    dbeta_beta = eye(3)
+
+    # dynamics jacobian (d_f/d_state)
+    A = [dphi_phi        dphi_dw          zeros(3,3);
+         zeros(3,3)      dw_w                zeros(3,3);
+         zeros(3,3)      zeros(3,3)          dbeta_beta]
+
+    # covariance prediction
+    Sigma_predict = A*Sigma*A' + Q
+
+    return mu_predict, Sigma_predict
+end
+
+function ekf_innovate(mu_predict::Vec,Sigma_predict::Mat,yt::Vec,r1n::Vec,
+                      r2n::Vec,R::Mat)::Tuple{Vec,Mat}
 
     # predicted quaternion
     q_predict = mu_predict[1:4]
@@ -82,7 +117,6 @@ function ekf_innovate(mu_predict,Sigma_predict,yt,r1n,r2n,R)
     # use the predicted attitude to generate predicted measurements
     r1b_t = transpose(n_Q_bt)*r1n
     r2b_t = transpose(n_Q_bt)*r2n
-
 
     # predicted measurment
     yhat = mekf_g(mu_predict,r1n, r2n)
@@ -124,7 +158,7 @@ function ekf_innovate(mu_predict,Sigma_predict,yt,r1n,r2n,R)
 end
 
 # function mekf(mu,Sigma,tau,yt,Q,R,dt,r1n,r2n,params)
-function mekf!(MEKF::MEKF_struct,tau,sensors::sensor_state_struct,orb_ind,index_n)
+function mekf!(MEKF::MEKF_struct,tau,sensors::sensor_state_struct,orb_ind::Int,index_n::Int)
 
 # two inertial vectors
 r1n = normalize(sensors.sun_eci[orb_ind])
@@ -152,15 +186,25 @@ yt = [sensors.ω[index_n];
 # innovate/update
 mu_update,Sigma_update = ekf_innovate(mu_predict,Sigma_predict,yt,r1n,r2n,R)
 
-# @infiltrate
-# error()
 # save to struct
 MEKF.mu[index_n] = mu_update
 MEKF.Sigma[index_n] = Sigma_update
 end
 
+function mekf(mu::Vec,Sigma::Mat,tau::Vec,r1n::Vec,r2n::Vec,yt::Vec,Q::Mat,
+              R::Mat,dt::Float64,J::Mat,invJ::Mat)::Tuple{Vec,Mat}
 
-function triad_equal_error(r1,r2,b1,b2)
+# predict
+mu_predict,Sigma_predict = ekf_predict(mu,Sigma,tau,dt,Q,J,invJ)
+
+# innovate/update
+mu_update,Sigma_update = ekf_innovate(mu_predict,Sigma_predict,yt,r1n,r2n,R)
+
+    return mu_update, Sigma_update
+end
+
+
+function triad_equal_error(r1::Vec,r2::Vec,b1::Vec,b2::Vec)
     # triad but with the errors spread equally between the two vectors
     # r1 and r2 are expressed in the inertial frame
     # b1 and b2 are the same vectors expressed in the body frame
@@ -169,6 +213,11 @@ function triad_equal_error(r1,r2,b1,b2)
     # for each measurement
     a1 = .5
     a2 = .5
+
+    normalize!(r1)
+    normalize!(r2)
+    normalize!(b1)
+    normalize!(b2)
 
     r3 = normalize(cross(r1,r2))
     b3 = normalize(cross(b1,b2))
@@ -188,7 +237,7 @@ function triad_equal_error(r1,r2,b1,b2)
 end
 
 
-function q_angle_error(n_q_b,n_q_b_est)
+function q_angle_error(n_q_b::Vec,n_q_b_est::Vec)::Float64
     # gets the error between the estimated and true attitude
 
     # error quaternion b_q_b_est

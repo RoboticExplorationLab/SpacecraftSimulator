@@ -53,13 +53,13 @@ inertia_properties:
 
 sensor_properties:
   gyro:
-    rotate_std_deg: 0.0
+    rotate_std_deg: 3.0
     noise_std_degps: 0.22
     initial_bias_deg: 2.0
     bias_noise_std: 1e-8
   sun_sensor:
-    rotate_std_deg: 0.0
+    rotate_std_deg: 3.0
     noise_std_deg: 5.0
   magnetometer:
-    rotate_std_deg: 0.0
+    rotate_std_deg: 3.0
     noise_std_deg: 5.0

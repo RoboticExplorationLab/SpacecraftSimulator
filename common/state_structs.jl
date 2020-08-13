@@ -60,16 +60,16 @@ function initialize_sensors_struct(time_params::NamedTuple)::sensor_state_struct
         return sensors
 end
 
-struct MEKF_struct
-    mu              :: Array{Array{Float64,1},1}
-    Sigma           :: Array{Array{Float64,2},1}
-    Q               :: Array{Float64,2} # static
-    R               :: Array{Float64,2} # static
-    ᴺqᴮ             :: Array{Array{Float64,1},1} # derived
-    ᴺQᴮ             :: Array{Array{Float64,2},1} # derived
-    ω               :: Array{Array{Float64,1},1} # derived
-    β               :: Array{Array{Float64,1},1} # derived
-end
+# struct MEKF_struct
+#     mu              :: Array{Array{Float64,1},1}
+#     Sigma           :: Array{Array{Float64,2},1}
+#     Q               :: Array{Float64,2} # static
+#     R               :: Array{Float64,2} # static
+#     ᴺqᴮ             :: Array{Array{Float64,1},1} # derived
+#     ᴺQᴮ             :: Array{Array{Float64,2},1} # derived
+#     ω               :: Array{Array{Float64,1},1} # derived
+#     β               :: Array{Array{Float64,1},1} # derived
+# end
 
 function initialize_mekf_struct(time_params::NamedTuple)::MEKF_struct
 
@@ -115,13 +115,13 @@ end
 function initialize_mekf!(MEKF,truth)
 
     MEKF.Q .= diagm(1e-8*ones(9))
-    # MEKF.Q[7:9,7:9] .= diagm(1e-12*ones(3))
+    MEKF.Q[7:9,7:9] .= diagm(1e-12*ones(3))
 
     R_gyro = deg2rad(params.sensors.gyro.noise_std_degps)^2*ones(3)
     R_sun_sensor = deg2rad(params.sensors.sun_sensor.noise_std_deg)^2*ones(3)
     R_magnetometer = deg2rad(params.sensors.magnetometer.noise_std_deg)^2*ones(3)
 
-    MEKF.R .= 1.5*diagm([R_gyro;R_sun_sensor;R_magnetometer])
+    MEKF.R .= 2*diagm([R_gyro;R_sun_sensor;R_magnetometer])
 
     # initialize mu and Sigma
     MEKF.mu[1] = [truth.ᴺqᴮ[1];truth.ω[1];zeros(3)]
@@ -158,9 +158,6 @@ function attitude_truth_struct_update!(truth::truth_state_struct,k::Int,jj::Int)
     # sun_body
     truth.sun_body[jj] = sun_body_normalized(truth.r_sun_eci[k],truth.r_eci[k],
                                             truth.ᴺQᴮ[jj])
-
-    # @infiltrate
-    # error()
 
 end
 
@@ -209,6 +206,8 @@ end
 
 
 function mat_from_vec(a::Array{Array{Float64,1},1})
+    "Turn a vector of vectors into a matrix"
+
 
     rows = length(a[1])
     columns = length(a)
