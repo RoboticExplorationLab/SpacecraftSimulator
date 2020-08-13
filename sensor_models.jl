@@ -96,7 +96,8 @@ function measurements(truth::truth_state_struct,orb_ind::Int,index_n::Int)
     true_ω = truth.ω[index_n]
     gyro_offset = params.sensors.offsets.gyro
     # TODO: include bias dynamics in there somewhere
-    gyro_bias = params.sensors.offsets.gyro_bias
+    # gyro_bias = params.sensors.offsets.gyro_bias
+    gyro_bias = truth.β[index_n]
     gyro_noise = deg2rad(params.sensors.gyro.noise_std_degps)*randn(3)
     meas_ω = gyro_offset*true_ω + gyro_bias + gyro_noise
 

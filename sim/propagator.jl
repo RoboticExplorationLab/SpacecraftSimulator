@@ -67,6 +67,8 @@ function sim_driver(path_to_yaml)
             τ = zeros(3)
 
             # --------------------MEKF--------------------------------
+
+
             if index_n>1
                 # mekf!(MEKF,τ,sensors,orb_ind,index_n)
                 yt = [sensors.ω[index_n];
@@ -78,6 +80,7 @@ function sim_driver(path_to_yaml)
                     normalize(sensors.B_eci[orb_ind]),yt,MEKF.Q,MEKF.R,
                     params.time_params.dt_attitude,sensors.J,sensors.invJ)
             end
+            update_mekf_struct!(MEKF,index_n)
 
             # -------------------TRIAD--------------------------------
             q_triad[index_n] = triad_equal_error(sensors.sun_eci[orb_ind],sensors.B_eci[orb_ind],
@@ -86,8 +89,10 @@ function sim_driver(path_to_yaml)
             sc_mag_moment = zeros(3)
 
             # -------------------integration--------------------------
-            truth.ᴺqᴮ[index_n+1], truth.ω[index_n+1] =rk4_attitude(spacecraft_eom,
-            truth.epc_orbital, [truth.ᴺqᴮ[index_n];truth.ω[index_n]], sc_mag_moment, truth.B_eci[orb_ind], τ, time_params.dt_attitude)
+            truth.ᴺqᴮ[index_n+1], truth.ω[index_n+1], truth.β[index_n+1] =rk4_attitude(spacecraft_eom,
+            truth.epc_orbital, [truth.ᴺqᴮ[index_n];truth.ω[index_n]],
+            truth.β[index_n],sc_mag_moment, truth.B_eci[orb_ind], τ,
+            time_params.dt_attitude)
 
 
         end
@@ -110,7 +115,7 @@ function sim_driver(path_to_yaml)
                                   length(time_params.t_vec_attitude))
     sensors_update!(sensors, truth,length(time_params.t_vec_orbital),
                                   length(time_params.t_vec_attitude))
-    yt = [sensors.ω[index_n];sensors.sun_body[index_n];sensors.B_body[index_n]]
+    # yt = [sensors.ω[index_n];sensors.sun_body[index_n];sensors.B_body[index_n]]
     # MEKF.mu[index_n], MEKF.Sigma[index_n] = mekf(MEKF.mu[index_n-1],
     #         MEKF.Sigma[index_n-1],τ,normalize(sensors.sun_eci[orb_ind]),
     #         normalize(sensors.B_eci[orb_ind]),yt,MEKF.Q,MEKF.R,
@@ -130,6 +135,8 @@ q = mat_from_vec(sim_output.truth.ᴺqᴮ)
 
 q_triad = mat_from_vec(sim_output.q_triad)
 
+β = mat_from_vec(sim_output.truth.β)
+β_ekf = mat_from_vec(sim_output.MEKF.β)
 mu = mat_from_vec(sim_output.MEKF.mu)
 mu_w = mu[5:7,:]
 gyro = mat_from_vec(sim_output.sensors.ω)
@@ -143,6 +150,12 @@ for i = 1:N
     triad_point_error[i] = q_angle_error(sim_output.truth.ᴺqᴮ[i],q_triad[:,i])
 end
 
+mat"
+figure
+hold on
+plot($sim_output.t_vec_attitude,$β_ekf')
+plot($sim_output.t_vec_attitude,$β')
+"
 
 mat"
 figure

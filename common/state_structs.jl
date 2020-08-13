@@ -13,18 +13,19 @@ mutable struct truth_state_struct
     sun_body        :: Array{Array{Float64,1},1} # derived
     B_body          :: Array{Array{Float64,1},1} # derived
     epc_orbital     :: Epoch
+    β               :: Array{Array{Float64,1},1}
 end
 
-struct MEKF_struct
-    mu              :: Array{Array{Float64,1},1}
-    Sigma           :: Array{Array{Float64,2},1}
-    Q               :: Array{Float64,2} # static
-    R               :: Array{Float64,2} # static
-    ᴺqᴮ             :: Array{Array{Float64,1},1} # derived
-    ᴺQᴮ             :: Array{Array{Float64,2},1} # derived
-    ω               :: Array{Array{Float64,1},1} # derived
-    β               :: Array{Array{Float64,1},1} # derived
-end
+# struct MEKF_struct
+#     mu              :: Array{Array{Float64,1},1}
+#     Sigma           :: Array{Array{Float64,2},1}
+#     Q               :: Array{Float64,2} # static
+#     R               :: Array{Float64,2} # static
+#     ᴺqᴮ             :: Array{Array{Float64,1},1} # derived
+#     ᴺQᴮ             :: Array{Array{Float64,2},1} # derived
+#     ω               :: Array{Array{Float64,1},1} # derived
+#     β               :: Array{Array{Float64,1},1} # derived
+# end
 
 struct sensor_state_struct
     ω               :: Array{Array{Float64,1},1}
@@ -71,27 +72,27 @@ end
 #     β               :: Array{Array{Float64,1},1} # derived
 # end
 
-function initialize_mekf_struct(time_params::NamedTuple)::MEKF_struct
-
-    t_vec_attitude = time_params.t_vec_attitude
-
-    attitude3 = fill(zeros(3),length(t_vec_attitude))
-    attitude3x3 = fill(zeros(3,3),length(t_vec_attitude))
-    attitude4 = fill(zeros(4),length(t_vec_attitude))
-    attitude10 = fill(zeros(10),length(t_vec_attitude))
-    attitude9x9 = fill(zeros(9,9),length(t_vec_attitude))
-
-    MEKF = MEKF_struct(copy(attitude10),    # mu
-                       copy(attitude9x9),  # Sigma
-                       copy(zeros(9,9)),  # Q
-                       copy(zeros(9,9)),  # R
-                       copy(attitude4),    # ᴺqᴮ
-                       copy(attitude3x3),  # ᴺQᴮ
-                       copy(attitude3),    # ω
-                       copy(attitude3))    # β
-
-
-end
+# function initialize_mekf_struct(time_params::NamedTuple)::MEKF_struct
+#
+#     t_vec_attitude = time_params.t_vec_attitude
+#
+#     attitude3 = fill(zeros(3),length(t_vec_attitude))
+#     attitude3x3 = fill(zeros(3,3),length(t_vec_attitude))
+#     attitude4 = fill(zeros(4),length(t_vec_attitude))
+#     attitude10 = fill(zeros(10),length(t_vec_attitude))
+#     attitude9x9 = fill(zeros(9,9),length(t_vec_attitude))
+#
+#     MEKF = MEKF_struct(copy(attitude10),    # mu
+#                        copy(attitude9x9),  # Sigma
+#                        copy(zeros(9,9)),  # Q
+#                        copy(zeros(9,9)),  # R
+#                        copy(attitude4),    # ᴺqᴮ
+#                        copy(attitude3x3),  # ᴺQᴮ
+#                        copy(attitude3),    # ω
+#                        copy(attitude3))    # β
+#
+#
+# end
 
 
 function sensors_update!(sensors, truth,orb_ind,index_n)
@@ -112,21 +113,31 @@ function sensors_update!(sensors, truth,orb_ind,index_n)
 
 end
 
-function initialize_mekf!(MEKF,truth)
-
-    MEKF.Q .= diagm(1e-8*ones(9))
-    MEKF.Q[7:9,7:9] .= diagm(1e-12*ones(3))
-
-    R_gyro = deg2rad(params.sensors.gyro.noise_std_degps)^2*ones(3)
-    R_sun_sensor = deg2rad(params.sensors.sun_sensor.noise_std_deg)^2*ones(3)
-    R_magnetometer = deg2rad(params.sensors.magnetometer.noise_std_deg)^2*ones(3)
-
-    MEKF.R .= 2*diagm([R_gyro;R_sun_sensor;R_magnetometer])
-
-    # initialize mu and Sigma
-    MEKF.mu[1] = [truth.ᴺqᴮ[1];truth.ω[1];zeros(3)]
-    MEKF.Sigma[1] = .1*eye(9)
-end
+# function initialize_mekf!(MEKF,truth)
+#
+#     MEKF.Q .= diagm(1e-8*ones(9))
+#     MEKF.Q[7:9,7:9] .= diagm(1e-3*ones(3))
+#
+#     R_gyro = deg2rad(params.sensors.gyro.noise_std_degps)^2*ones(3)
+#     R_sun_sensor = deg2rad(params.sensors.sun_sensor.noise_std_deg)^2*ones(3)
+#     R_magnetometer = deg2rad(params.sensors.magnetometer.noise_std_deg)^2*ones(3)
+#
+#     MEKF.R .= 1.3*diagm([R_gyro;R_sun_sensor;R_magnetometer])
+#
+#     # initialize mu and Sigma
+#     MEKF.mu[1] = [truth.ᴺqᴮ[1];truth.ω[1];zeros(3)]
+#     MEKF.Sigma[1] = .1*eye(9)
+# end
+#
+# function update_mekf_struct!(MEKF,index_n)
+#
+#     # fill in the state
+#     MEKF.ᴺqᴮ[index_n] = copy(MEKF.mu[index_n][1:4])
+#     MEKF.ᴺQᴮ[index_n] = dcm_from_q(MEKF.ᴺqᴮ[index_n])
+#     MEKF.ω[index_n]   = copy(MEKF.mu[index_n][5:7])
+#     MEKF.β[index_n]   = copy(MEKF.mu[index_n][8:10])
+#
+# end
 
 function orbital_truth_struct_update!(truth::truth_state_struct,k::Int)
     """Fill in the truth struct with derived properties for orbital changes."""
@@ -191,7 +202,8 @@ function initialize_struct(struct_type_name   ::DataType,
                              copy(attitude6),     # I_sun_flux
                              copy(attitude3),     # sun_body
                              copy(attitude3),     # B_body
-                             epc_orbital          # time
+                             epc_orbital,         # time
+                             copy(attitude3)      # β
                              )
 
     # initial conditions
@@ -200,6 +212,8 @@ function initialize_struct(struct_type_name   ::DataType,
     truth.ᴺqᴮ[1] =  initial_conditions.ᴺqᴮ0
     truth.ω[1] = initial_conditions.ω0
     truth.epc_orbital = initial_conditions.epc_orbital
+    truth.β[1] = params.sensors.offsets.gyro_bias
+
         return truth
 end
 

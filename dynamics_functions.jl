@@ -86,7 +86,7 @@ function rk4_orbital(f::Function, t_n::RealorEpoch, x_n::Vec, u::Vec,
     return x_np1[1:3], x_np1[4:6], t_n+h
 end
 
-function rk4_attitude(f::Function, t_n::RealorEpoch, x_n::Vec, m::Vec,
+function rk4_attitude(f::Function, t_n::RealorEpoch, x_n::Vec, bias::Vec, m::Vec,
                                     B_eci_nT::Vec, τ::Vec, h::Real)::Tuple
     """Runge-Kutta 4th order integration. Epoch for time.
 
@@ -110,7 +110,10 @@ function rk4_attitude(f::Function, t_n::RealorEpoch, x_n::Vec, m::Vec,
     x_np1 = (x_n + (1/6)*(k1+2*k2+2*k3 + k4));
     x_np1[1:4] = normalize(x_np1[1:4])
 
-    return x_np1[1:4], x_np1[5:7]
+    # gyro bias
+    bias_update = bias + deg2rad(params.sensors.gyro.bias_noise_std)*randn(3)
+
+    return x_np1[1:4], x_np1[5:7], bias_update
 end
 
 function spacecraft_eom(t, x, m, B_eci_nT, τ)
