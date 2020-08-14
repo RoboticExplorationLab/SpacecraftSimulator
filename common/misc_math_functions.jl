@@ -423,11 +423,38 @@ function dcm_from_p(p::Vec)::Mat
 end
 
 function pdot_from_w(p::Vec,w::Vec)::Vec
-# % this is the kinematics of the modified rodrigues parameter assuming that
-# % attitude is being denoted as N_R_B using the kane/levinson convention
-# p = p(:);
-# w = w(:);
+    #TODO:test this
+    # this is the kinematics of the modified rodrigues parameter assuming that
+    # attitude is being denoted as N_R_B using the kane/levinson convention
 
-return ((1+norm(p)^2)/4)*(eye(3) + 2*(hat(p)^2 + hat(p))/(1+norm(p)^2))*w
+    return ((1+norm(p)^2)/4)*(eye(3) + 2*(hat(p)^2 + hat(p))/(1+norm(p)^2))*w
 
+end
+
+function p_from_phi(phi::Vec)::Vec
+    #TODO: test this
+    q = q_from_phi(phi)
+    p = p_from_q(q)
+
+    return p
+end
+
+function interp1(t,B_save,input_t)
+    #TODO: test this
+
+    # sample rate of B_save vec
+    Δt = t[2]-t[1]
+
+    # get the lower and upper bounds
+    lower_idx = Int(floor(input_t/Δt))
+    # upper_idx = Int(ceil(input_t+1e-10/Δt))
+
+    # how far are we between the bounds ∈[0,1]
+    δt = ((input_t) - Δt*lower_idx)/Δt
+
+    # lower and upper function values
+    f_lower = B_save[lower_idx+1]
+    f_upper = B_save[lower_idx+2]
+
+        return (f_lower + δt*(f_upper - f_lower))
 end

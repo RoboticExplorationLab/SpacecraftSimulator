@@ -48,8 +48,11 @@ for iter = 1:max_iters
         r = R*utraj[:,k]
 
         # % inverses come in here
-        l[:,k] = (R + B[:,:,k]'*S*B[:,:,k])\(r + B[:,:,k]'*s)
-        K[:,:,k] = (R + B[:,:,k]'*S*B[:,:,k])\(B[:,:,k]'*S*A[:,:,k])
+        ilqrinv = inv(convert(Array{Float32,2},(R + B[:,:,k]'*S*B[:,:,k])))
+        # l[:,k] = (R + B[:,:,k]'*S*B[:,:,k])\(r + B[:,:,k]'*s)
+        # K[:,:,k] = (R + B[:,:,k]'*S*B[:,:,k])\(B[:,:,k]'*S*A[:,:,k])
+        l[:,k] = ilqrinv*(r + B[:,:,k]'*s)
+        K[:,:,k] = ilqrinv*(B[:,:,k]'*S*A[:,:,k])
 
         # %Calculate new S and s
         Snew = Q + K[:,:,k]'*R*K[:,:,k] + (A[:,:,k]-B[:,:,k]*K[:,:,k])'*S*(A[:,:,k]-B[:,:,k]*K[:,:,k])
@@ -96,7 +99,8 @@ for iter = 1:max_iters
     maxL = round(maximum(vec(l)),digits = 3)
     J = Jnew
     J_display = round(J,digits = 3)
-    println("$iter          $alpha      $maxL    $J_display")
+    alpha_display = round(2*alpha,digits = 3)
+    println("$iter          $alpha_display      $maxL    $J_display")
 
 
     xtraj = xnew
@@ -177,9 +181,31 @@ function rk4step(x0,u0,dt,t,params)
 
     x_tp1 = x1 + (1/6)*(k1 + 2*k2 + 2*k3 + k4)
 
+    # midpoint method
+    # A_d = eye(Nx) + dt*A2 + 0.5*dt*dt*A2*A1
+    # B_d = dt*B2 + 0.5*dt*dt*A2*B1
 
-    A_d = eye(Nx) + dt*A2 + 0.5*dt*dt*A2*A1
-    B_d = dt*B2 + 0.5*dt*dt*A2*B1
+    # RK4 method
+    #A_d
+    dk1_dx1 = dt*A1
+    dx2_dx1 = eye(Nx) + .5*dk1_dx1
+    dk2_dx1 = dt*A2*dx2_dx1
+    dx3_dx1 = eye(Nx) + .5*dk2_dx1
+    dk3_dx1 = dt*A3*dx3_dx1
+    dx4_dx1 = eye(Nx) + dk3_dx1
+    dk4_dx1 = dt*A4*dx4_dx1
+    A_d = eye(Nx) + (1/6)*(dk1_dx1 + 2*dk2_dx1 + 2*dk3_dx1 + dk4_dx1)
+
+    # B_d
+    dk1_du = dt*B1
+    dx2_du = .5*dk1_du
+    dk2_du = dt*A2*dx2_du + dt*B2
+    dx3_du = .5*dk2_du
+    dk3_du = dt*A3*dx3_du + dt*B3
+    dx4_du = dk3_du
+    dk4_du = dt*A4*dx4_du + dt*B4
+    B_d = (1/6)*(dk1_du + 2*dk2_du + 2*dk3_du + dk4_du)
+
 
     return x_tp1, A_d, B_d
 end
