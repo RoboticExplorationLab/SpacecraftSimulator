@@ -13,8 +13,9 @@ include(joinpath(ss_sim_path,"common/testing_functions.jl"))
 include(joinpath(ss_sim_path,"common/state_structs.jl"))
 include(joinpath(ss_sim_path,"sensor_models.jl"))
 include(joinpath(ss_sim_path,"inner_attitude_loop.jl"))
-include(joinpath(ss_sim_path,"MEKF/MEKF_functions.jl"))
 include(joinpath(ss_sim_path,"MEKF/MEKF_utils.jl"))
+include(joinpath(ss_sim_path,"MEKF/MEKF_functions.jl"))
+
 #
 # # @infiltrate
 # # error()

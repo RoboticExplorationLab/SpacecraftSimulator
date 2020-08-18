@@ -439,7 +439,58 @@ function p_from_phi(phi::Vec)::Vec
     return p
 end
 
-function interp1(t,B_save,input_t)
+function phi_from_p(p::Vec)::Vec
+    #TODO: test this
+    q = q_from_p(p)
+    phi = phi_from_q(q)
+
+    return phi
+end
+
+# function interp1(t,B_save::VecofVecs,input_t::Number)
+#     #TODO: test this
+#
+#     # sample rate of B_save vec
+#     Δt = t[2]-t[1]
+#
+#     # get the lower and upper bounds
+#     lower_idx = Int(floor(input_t/Δt))
+#     # upper_idx = Int(ceil(input_t+1e-10/Δt))
+#
+#     # how far are we between the bounds ∈[0,1]
+#     δt = ((input_t) - Δt*lower_idx)/Δt
+#
+#     # lower and upper function values
+#     f_lower = B_save[lower_idx+1]
+#     f_upper = B_save[lower_idx+2]
+#
+#         return (f_lower + δt*(f_upper - f_lower))
+# end
+
+# function interp1(t,B_save::Mat,input_t::Number)
+#     #TODO: test this
+#
+#     # sample rate of B_save vec
+#     Δt = t[2]-t[1]
+#
+#     # get the lower and upper bounds
+#     lower_idx = Int(floor(input_t/Δt))
+#     # upper_idx = Int(ceil(input_t+1e-10/Δt))
+#
+#     # how far are we between the bounds ∈[0,1]
+#     δt = ((input_t) - Δt*lower_idx)/Δt
+#
+#     # lower and upper function values
+#     println("yes")
+#     @infiltrate
+#     # error()
+#     f_lower = B_save[:,lower_idx+1]
+#     f_upper = B_save[:,lower_idx+2]
+#
+#         return (f_lower + δt*(f_upper - f_lower))
+# end
+
+function interp1(t,B_save,input_t::Number)
     #TODO: test this
 
     # sample rate of B_save vec
@@ -453,8 +504,54 @@ function interp1(t,B_save,input_t)
     δt = ((input_t) - Δt*lower_idx)/Δt
 
     # lower and upper function values
-    f_lower = B_save[lower_idx+1]
-    f_upper = B_save[lower_idx+2]
+    # @infiltrate
+    # error()
+
+    if (lower_idx+2)>length(B_save)
+        return B_save[end]
+    else
+
+        f_lower = B_save[lower_idx+1]
+        f_upper = B_save[lower_idx+2]
 
         return (f_lower + δt*(f_upper - f_lower))
+    end
+
+end
+
+function vec_from_mat(mat)
+    #TODO: test this
+
+    s = size(mat)
+    if length(s) == 3
+        a,b,c = size(mat)
+
+        V = fill(zeros(a,b),c)
+
+        for i = 1:c
+            V[i] = mat[:,:,i]
+        end
+    else
+        a,b = size(mat)
+
+        V = fill(zeros(a),b)
+
+        for i = 1:b
+            V[i] = mat[:,i]
+        end
+    end
+
+
+    return V
+end
+
+function clamp3d(max_moments::Vec,m::Vec)
+
+    m_out = zeros(3)
+
+    for i = 1:3
+        m_out[i] = clamp(m[i],-max_moments[i],max_moments[i])
+    end
+
+    return m_out
 end

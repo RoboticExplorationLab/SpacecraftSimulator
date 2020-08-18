@@ -1,23 +1,8 @@
 function sc_b_dynamics(t,x,u,params)
 
-# % B_eci_fx = @(t) .001*expm(hat([0;1/sqrt(2);1/sqrt(2)]*t*.1*2*pi/500))*[1;0;0];
-
-# % B_eci = B_eci_fx(t);
-
-
-# B_1 = interp1(params.t_vec,params.B(:,1),t);
-# B_2 = interp1(params.t_vec,params.B(:,2),t);
-# B_3 = interp1(params.t_vec,params.B(:,3),t);
-
-# B_eci = [B_1;B_2;B_3];
+# @infiltrate
+# error()
 B_eci = interp1(params.t_vec,params.B_save,t)
-
-# u_scale = params.u_scale;
-#
-# u = u/u_scale;
-
-# 1 = params.1;
-# tau_mag = params.tau_mag;
 
 
 
@@ -92,7 +77,27 @@ B = [zeros(3,3);
 end
 
 
+function sc_b_dynamics_xdot(t,x,u,params)
 
+      # u = interp1(params.u_t,uhist,t)
+      xdot, A, B = sc_b_dynamics(t,x,u,params)
+
+      return xdot
+end
+
+
+function rk4(f,t_n,x_n,u,params,dt)
+    # standard rk4
+
+    k1 = dt*f(t_n,x_n,u,params)
+    k2 = dt*f(t_n+dt/2, x_n+k1/2,u,params)
+    k3 = dt*f(t_n+dt/2, x_n+k2/2,u,params)
+    k4 = dt*f(t_n+dt, x_n+k3,u,params)
+
+    x_np1 = (x_n + (1/6)*(k1+2*k2+2*k3 + k4))
+
+        return x_np1
+end
 
 
 ## here we forward diff the dynamics
