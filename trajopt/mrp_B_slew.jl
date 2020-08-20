@@ -58,14 +58,17 @@ R = convert(Array{Float32,2},R)
 Qf = convert(Array{Float32,2},Qf)
 
 
-
+dt = convert(Float32,dt)
 
 B_eci = interp1(params.t_vec,params.B_save,11.0)
 
 xhist, uhist, Khist = iLQRsimple_B(x0, xg, u0, Q, R, Qf, dt,params)
+xhist, uhist, Khist = iLQRsimple_B3(x0, xg, Q, R, Qf, N,dt,params)
 println("solved")
 
-
+# Khist = mat_from_vec(Khist)
+uhist = mat_from_vec(uhist)
+xhist = mat_from_vec(xhist)
 angle_error = zeros(size(xhist,2))
 ω_norm = zeros(size(xhist,2))
 for i = 1:size(xhist,2)
@@ -113,13 +116,14 @@ title('Magnetic Moment')
 stairs($t_plot(1:end-1),$uplot')
 "
 
+# Khist = vec_from_mat(Khist)
+uhist = vec_from_mat(uhist)
+xhist = vec_from_mat(xhist)
 
 x_t = t_plot
 u_t = t_plot[1:end-1]
 
-Khist = vec_from_mat(Khist)
-uhist = vec_from_mat(uhist)
-xhist = vec_from_mat(xhist)
+
 # now lets try a sim
 function controller(u_t,uhist,x_t,xhist,Khist,t,x)
 

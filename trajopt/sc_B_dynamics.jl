@@ -84,7 +84,13 @@ function sc_b_dynamics_xdot(t,x,u,params)
 
       return xdot
 end
-
+# function sc_b_dynamics_jacobians(t,x,u,params)
+#
+#       # u = interp1(params.u_t,uhist,t)
+#       xdot, A, B = sc_b_dynamics(t,x,u,params)
+#
+#       return A, B
+# end
 
 function rk4(f,t_n,x_n,u,params,dt)
     # standard rk4

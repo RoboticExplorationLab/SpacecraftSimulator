@@ -219,7 +219,7 @@ end
 
 
 
-function mat_from_vec(a::Array{Array{Float64,1},1})
+function mat_from_vec(a::Union{Array{Array{Float64,1},1},Array{Array{Float32,1},1}})
     "Turn a vector of vectors into a matrix"
 
 
