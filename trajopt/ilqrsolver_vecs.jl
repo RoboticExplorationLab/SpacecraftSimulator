@@ -19,141 +19,135 @@ function iLQRsimple_B3(x0::Array{Float32,1},
                        Qf::Array{Float32,2},
                        N::Int,
                        dt::Float32,
-                       params::NamedTuple)::Tuple{Array{Array{Float32,1},1},
-                                                  Array{Array{Float32,1},1},
-                                                  Array{Array{Float32,2},1}}
-"""ILQR with all vectors of vectors/mats, and Float32
+                       params::NamedTuple)
 
-Args:
-    x0       : initial condition [ᴺpᴮ;ω] ∈ R⁶
-    xg       : goal state
-    Q        : state cost quadratic term
-    R        : control cost quadratic term
-    Qf       : final state cost quadratic term
-    N        : number of knot points
-    dt       : timestep between knot points
-    params   : named tuple with spacecraft info
+    # """ILQR with all vectors of vectors/mats, and Float32
+    #
+    # Args:
+    #     x0       : initial condition [ᴺpᴮ;\^N ω] ∈ R⁶
+    #     xg       : goal state
+    #     Q        : state cost quadratic term
+    #     R        : control cost quadratic term
+    #     Qf       : final state cost quadratic term
+    #     N        : number of knot points
+    #     dt       : timestep between knot points
+    #     params   : named tuple with spacecraft info
+    #
+    # Returns:
+    #     xtraj    : vector of vectors for state history
+    #     utraj    : vector of vectors for control history
+    # """
 
-Returns:
-    xtraj    : vector of vectors for state history
-    utraj    : vector of vectors for control history
-    K        : vector of gain matrices
-"""
+    # state and control dimensions
+    Nx = 6
+    Nu = 3
 
-# state and control dimensions
-Nx = 6
-Nu = 3
+    # initial trajectory is initial conditions the whole time
+    xtraj = fill(x0,N)
+    utraj = fill(zeros(Float32,Nu),N-1)
 
-# initial trajectory is initial conditions the whole time
-xtraj = fill(x0,N)
-utraj = fill(zeros(Float32,Nu),N-1)
+    # cost corresponding to no control
+    J = (N-1)*quad(Q,x0-xg) + quad(Qf,(xtraj[N]-xg))
 
-# cost corresponding to no control
-J = (N-1)*quad(Q,x0-xg) + quad(Qf,(xtraj[N]-xg))
+    # allocate K and l
+    K = fill(zeros(Float32,Nu,Nx),N-1)
+    l = fill(zeros(Float32,Nu),N-1)
 
-# allocate K and l
-K = fill(zeros(Float32,Nu,Nx),N-1)
-l = fill(zeros(Float32,Nu),N-1)
+    # allocate the new states and controls
+    xnew = fill(zeros(Float32,Nx),N)
+    unew = fill(zeros(Float32,Nu),N-1)
 
-# allocate the new states and controls
-xnew = fill(zeros(Float32,Nx),N)
-unew = fill(zeros(Float32,Nu),N-1)
+    # main loop
+    for iter = 1:50
 
-# main loop
-for iter = 1:50
+        # cost to go matrices at the end of the trajectory
+        S = Qf
+        s = Qf*(xtraj[N]-xg)
 
-    # cost to go matrices at the end of the trajectory
-    S = Qf
-    s = Qf*(xtraj[N]-xg)
+        # backwards pass
+        for k = (N-1):-1:1
 
-    # backwards pass
-    for k = (N-1):-1:1
+            # calculate cost gradients for this time step
+            q = Q*(xtraj[k]-xg)
+            r = R*utraj[k]
 
-        # calculate cost gradients for this time step
-        q = Q*(xtraj[k]-xg)
-        r = R*utraj[k]
+            # jacobians
+            Ak, Bk = rk4step_jacobians(xtraj[k],utraj[k], dt,(k-1)*dt,params)
+            # xx, Ak, Bk = rk4step(xtraj[k],utraj[k], dt,(k-1)*dt,params)
+            # linear solve
+            LHinv = inv(R + Bk'*S*Bk)
+            l[k] = LHinv*(r + Bk'*s)
+            K[k] = LHinv*(Bk'*S*Ak)
 
-        # jacobians
-        Ak, Bk = rk4step_jacobians(xtraj[k],utraj[k], dt,(k-1)*dt,params)
+            # update
+            Snew = Q + K[k]'*R*K[k] + quad(S,(Ak-Bk*K[k]))
+            snew = q - K[k]'*r + K[k]'*R*l[k] + (Ak-Bk*K[k])'*(s - S*Bk*l[k])
 
-        # linear solve
-        LHinv = inv(R + Bk'*S*Bk)
-        l[k] = LHinv*(r + Bk'*s)
-        K[k] = LHinv*(Bk'*S*Ak)
+            # update S's
+            S = copy(Snew)
+            s = copy(snew)
 
-        # update
-        Snew = Q + K[k]'*R*K[k] + quad(S,(Ak-Bk*K[k]))
-        snew = q - K[k]'*r + K[k]'*R*l[k] + (Ak-Bk*K[k])'*(s - S*Bk*l[k])
+        end
 
-        # update S's
-        S = copy(Snew)
-        s = copy(snew)
+        # initial conditions
+        xnew[1] = x0
 
-    end
+        # learning rate
+        alpha = 1.0
 
-    # initial conditions
-    xnew[1] = x0
-
-    # learning rate
-    alpha = 1.0
-
-    # line search
-    Jnew = 0.0
-    for line_i = 1:6
+        # line search
         Jnew = 0.0
+        for line_i = 1:6
+            Jnew = 0.0
 
-        # rollout the dynamics
-        for k = 1:N-1
-            unew[k] = utraj[k] - alpha*l[k] - K[k]*(xnew[k]-xtraj[k])
-            xnew[k+1]  = rk4step_xdot(xnew[k],unew[k], dt,(k-1)*dt,params)
-            Jnew += cost(Q,R,xnew[k],unew[k])
+            # rollout the dynamics
+            for k = 1:N-1
+                unew[k] = utraj[k] - alpha*l[k] - K[k]*(xnew[k]-xtraj[k])
+                xnew[k+1]  = rk4step_xdot(xnew[k],unew[k], dt,(k-1)*dt,params)
+                Jnew += cost(Q,R,xnew[k],unew[k])
+            end
+            Jnew = Jnew + (1/2)*(xnew[N]-xg)'*Qf*(xnew[N]-xg)
+
+            # if the new cost is lower, we keep it
+            if Jnew<J
+                break
+            else# this also pulls the linesearch back if hasnan(xnew)
+                alpha = (1/2)*alpha
+            end
+
         end
-        Jnew = Jnew + (1/2)*(xnew[N]-xg)'*Qf*(xnew[N]-xg)
 
-        # if the new cost is lower, we keep it
-        if Jnew<J
+        # update trajectory and control history
+        xtraj = copy(xnew)
+        utraj = copy(unew)
+
+        # termination criteria
+        if abs(J - Jnew)<params.dJ_tol
             break
-        else# this also pulls the linesearch back if hasnan(xnew)
-            alpha = (1/2)*alpha
         end
 
+
+        # ----------------------------output stuff-----------------------------
+        if rem((iter-1),4)==0
+            println("iter          alpha      maxL    Cost")
+        end
+        maxL = round(maximum(vec(mat_from_vec(l))),digits = 3)
+        J = Jnew
+        J_display = round(J,digits = 3)
+        alpha_display = round(alpha,digits = 3)
+        println("$iter          $alpha_display      $maxL    $J_display")
+
+
+
     end
 
-    # update trajectory and control history
-    xtraj = copy(xnew)
-    utraj = copy(unew)
-
-    # termination criteria
-    if abs(J - Jnew)<params.dJ_tol
-        break
-    end
-
-
-    # ----------------------------output stuff-----------------------------
-    if rem((iter-1),4)==0
-        println("iter          alpha      maxL    Cost")
-    end
-    maxL = round(maximum(vec(mat_from_vec(l))),digits = 3)
-    J = Jnew
-    J_display = round(J,digits = 3)
-    alpha_display = round(alpha,digits = 3)
-    println("$iter          $alpha_display      $maxL    $J_display")
-
-
-
-end
-
-return xtraj, utraj, K
+        return xtraj, utraj, K
 end
 
 
 function rk4step_xdot(x1,u0,dt,t,params)
 
-    # Nx = length(x0)
-
-    # x1 = x0
-
-    xdot1 = sc_b_dynamics_xdot(t,x0,u0,params)
+    xdot1 = sc_b_dynamics_xdot(t,x1,u0,params)
     k1 = xdot1*dt
 
     x2 = x1 + .5*k1
@@ -174,7 +168,7 @@ function rk4step_xdot(x1,u0,dt,t,params)
 
     return x_tp1
 end
-#
+
 function rk4step_jacobians(x0,u0,dt,t,params)
 
     Nx = length(x0)
@@ -244,9 +238,10 @@ end
 function testit()
 
 
-    a = 3.0
-
+    # a = 3.0
+    a = 0.0
     for i = 1:3
+        a = 0.0
         a += 1.0
     end
 
