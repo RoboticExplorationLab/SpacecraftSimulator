@@ -73,7 +73,7 @@ function iLQRsimple_B3(x0::Array{Float32,1},
 
             # jacobians
             Ak, Bk = rk4step_jacobians(xtraj[k],utraj[k], dt,(k-1)*dt,params)
-            # xx, Ak, Bk = rk4step(xtraj[k],utraj[k], dt,(k-1)*dt,params)
+
             # linear solve
             LHinv = inv(R + Bk'*S*Bk)
             l[k] = LHinv*(r + Bk'*s)
@@ -90,7 +90,7 @@ function iLQRsimple_B3(x0::Array{Float32,1},
         end
 
         # initial conditions
-        xnew[1] = x0
+        xnew[1] = copy(x0)
 
         # learning rate
         alpha = 1.0
@@ -169,53 +169,54 @@ function rk4step_xdot(x1,u0,dt,t,params)
     return x_tp1
 end
 
-function rk4step_jacobians(x0,u0,dt,t,params)
+function rk4step_jacobians(x1,u0,dt,t,params)
 
-    Nx = length(x0)
+    Nx = length(x1)
 
-    x1 = x0
+    # x1 = x0
 
-    xdot1, A1, B1 = sc_b_dynamics(t,x0,u0,params)
+    xdot1, A1, B1 = sc_b_dynamics(t,x1,u0,params)
     k1 = xdot1*dt
 
     x2 = x1 + .5*k1
     xdot2, A2, B2 = sc_b_dynamics(t+dt*.5,x2,u0,params)
     k2 = dt*xdot2;
-    #
-    # x3 = x1 + .5*k2
-    # xdot3, A3, B3 = sc_b_dynamics(t+dt*.5,x3,u0,params)
-    # k3 = dt*xdot3
-    #
-    # x4 = x1 + k3
-    # xdot4, A4, B4 = sc_b_dynamics(t+dt,x4,u0,params)
-    # k4 = dt*xdot4
-    #
-    # x_tp1 = x1 + (1/6)*(k1 + 2*k2 + 2*k3 + k4)
 
-    # midpoint method
-    A_d = eye(Nx) + dt*A2 + 0.5*dt*dt*A2*A1
-    B_d = dt*B2 + 0.5*dt*dt*A2*B1
+
+    x3 = x1 + .5*k2
+    xdot3, A3, B3 = sc_b_dynamics(t+dt*.5,x3,u0,params)
+    k3 = dt*xdot3
+
+    x4 = x1 + k3
+    xdot4, A4, B4 = sc_b_dynamics(t+dt,x4,u0,params)
+    k4 = dt*xdot4
+
+    x_tp1 = x1 + (1/6)*(k1 + 2*k2 + 2*k3 + k4)
+
+    # # midpoint method
+    # A_d = eye(Nx) + dt*A2 + 0.5*dt*dt*A2*A1
+    # B_d = dt*B2 + 0.5*dt*dt*A2*B1
 
     # RK4 method
-    #A_d
-    # dk1_dx1 = dt*A1
-    # dx2_dx1 = eye(Nx) + .5*dk1_dx1
-    # dk2_dx1 = dt*A2*dx2_dx1
-    # dx3_dx1 = eye(Nx) + .5*dk2_dx1
-    # dk3_dx1 = dt*A3*dx3_dx1
-    # dx4_dx1 = eye(Nx) + dk3_dx1
-    # dk4_dx1 = dt*A4*dx4_dx1
-    # A_d = eye(Nx) + (1/6)*(dk1_dx1 + 2*dk2_dx1 + 2*dk3_dx1 + dk4_dx1)
-    #
-    # # B_d
-    # dk1_du = dt*B1
-    # dx2_du = .5*dk1_du
-    # dk2_du = dt*A2*dx2_du + dt*B2
-    # dx3_du = .5*dk2_du
-    # dk3_du = dt*A3*dx3_du + dt*B3
-    # dx4_du = dk3_du
-    # dk4_du = dt*A4*dx4_du + dt*B4
-    # B_d = (1/6)*(dk1_du + 2*dk2_du + 2*dk3_du + dk4_du)
+    # A_d
+    dk1_dx1 = dt*A1
+    dx2_dx1 = eye(Nx) + .5*dk1_dx1
+    dk2_dx1 = dt*A2*dx2_dx1
+    dx3_dx1 = eye(Nx) + .5*dk2_dx1
+    dk3_dx1 = dt*A3*dx3_dx1
+    dx4_dx1 = eye(Nx) + dk3_dx1
+    dk4_dx1 = dt*A4*dx4_dx1
+    A_d = eye(Nx) + (1/6)*(dk1_dx1 + 2*dk2_dx1 + 2*dk3_dx1 + dk4_dx1)
+
+    # B_d
+    dk1_du = dt*B1
+    dx2_du = .5*dk1_du
+    dk2_du = dt*A2*dx2_du + dt*B2
+    dx3_du = .5*dk2_du
+    dk3_du = dt*A3*dx3_du + dt*B3
+    dx4_du = dk3_du
+    dk4_du = dt*A4*dx4_du + dt*B4
+    B_d = (1/6)*(dk1_du + 2*dk2_du + 2*dk3_du + dk4_du)
 
 
     A_d   = convert(Array{Float32,2},A_d)
@@ -247,4 +248,60 @@ function testit()
 
     @show a
 
+end
+
+
+function rk4step2(x0,u0,dt,t,params)
+
+    Nx = length(x0)
+# %     Nu = length(u0);
+
+    x1 = x0
+
+    xdot1, A1, B1 = sc_b_dynamics(t,x0,u0,params)
+    k1 = xdot1*dt
+
+    x2 = x1 + .5*k1
+    xdot2, A2, B2 = sc_b_dynamics(t+dt*.5,x2,u0,params)
+    k2 = dt*xdot2;
+
+    x3 = x1 + .5*k2
+    xdot3, A3, B3 = sc_b_dynamics(t+dt*.5,x3,u0,params)
+    k3 = dt*xdot3
+
+    x4 = x1 + k3
+    xdot4, A4, B4 = sc_b_dynamics(t+dt,x4,u0,params)
+    k4 = dt*xdot4
+
+    x_tp1 = x1 + (1/6)*(k1 + 2*k2 + 2*k3 + k4)
+
+    # midpoint method
+    # A_d = eye(Nx) + dt*A2 + 0.5*dt*dt*A2*A1
+    # B_d = dt*B2 + 0.5*dt*dt*A2*B1
+
+    # RK4 method
+    # A_d
+    dk1_dx1 = dt*A1
+    dx2_dx1 = eye(Nx) + .5*dk1_dx1
+    dk2_dx1 = dt*A2*dx2_dx1
+    dx3_dx1 = eye(Nx) + .5*dk2_dx1
+    dk3_dx1 = dt*A3*dx3_dx1
+    dx4_dx1 = eye(Nx) + dk3_dx1
+    dk4_dx1 = dt*A4*dx4_dx1
+    A_d = eye(Nx) + (1/6)*(dk1_dx1 + 2*dk2_dx1 + 2*dk3_dx1 + dk4_dx1)
+
+    # B_d
+    dk1_du = dt*B1
+    dx2_du = .5*dk1_du
+    dk2_du = dt*A2*dx2_du + dt*B2
+    dx3_du = .5*dk2_du
+    dk3_du = dt*A3*dx3_du + dt*B3
+    dx4_du = dk3_du
+    dk4_du = dt*A4*dx4_du + dt*B4
+    B_d = (1/6)*(dk1_du + 2*dk2_du + 2*dk3_du + dk4_du)
+
+    A_d   = convert(Array{Float32,2},A_d)
+    B_d   = convert(Array{Float32,2},B_d)
+
+    return x_tp1, A_d, B_d
 end

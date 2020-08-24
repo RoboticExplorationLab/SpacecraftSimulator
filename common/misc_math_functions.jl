@@ -546,7 +546,7 @@ function vec_from_mat(mat)
 end
 
 function clamp3d(max_moments::Vec,m::Vec)
-
+    #TODO: test this 
     m_out = zeros(3)
 
     for i = 1:3
@@ -554,4 +554,13 @@ function clamp3d(max_moments::Vec,m::Vec)
     end
 
     return m_out
+end
+function hasnan(mat)
+    #TODO: test this
+
+    if norm(isnan.(vec(mat)))>0.0
+        return true
+    else
+        return false
+    end
 end

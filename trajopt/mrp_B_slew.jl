@@ -1,17 +1,11 @@
 using LinearAlgebra, JLD2, MATLAB
 
+
 @load "B.jld2" B_mat B_save t_vec
 
 include(joinpath(dirname(@__FILE__),"sc_B_dynamics.jl"))
 include(joinpath(dirname(@__FILE__),"ilqrsolver.jl"))
 # include(joinpath(@__FILE_))
-function hasnan(mat)
-    if norm(isnan.(vec(mat)))>0.0
-        return true
-    else
-        return false
-    end
-end
 
 
 
@@ -28,11 +22,13 @@ dJ_tol = 1e-3
 params = (alpha0 = alpha0, t_vec = t_vec, B_save = convert(Array{Array{Float32,1},1},B_save), J = J, invJ = invJ,
 max_moments = max_moments,dJ_tol = dJ_tol)
 
-# x0 = [p_from_phi(deg2rad(120)*normalize(randn(3)));zeros(3)]
-x0 = vec([-0.569111, 0.08157139, -0.05284032, 0.0, 0.0, 0.0])
+function runit()
+x0 = [p_from_phi(deg2rad(160)*normalize(randn(3)));zeros(3)]
+# x0 = vec([-0.569111, 0.08157139, -0.05284032, 0.0, 0.0, 0.0])
 # x0 = vec([-1.4505896726335037, 0.5147044464043511, -1.420337910297834, 0.0, 0.0, 0.0])
 # x0 = vec([-0.17620427335985153, -0.2757563693297543, -0.4756509352005231, 0.0, 0.0, 0.0])
 # x0 = vec([0.2959220196740442, -0.06054147908212846, 0.4920347761245298, 0.0, 0.0, 0.0])
+# x0 = vec([0.53753614, -0.1159876, 0.17588383, 0.0, 0.0, 0.0])
 xg = zeros(6)
 
 N = 25
@@ -60,9 +56,9 @@ Qf = convert(Array{Float32,2},Qf)
 
 dt = convert(Float32,dt)
 
-B_eci = interp1(params.t_vec,params.B_save,11.0)
+# B_eci = interp1(params.t_vec,params.B_save,11.0)
 
-xhist, uhist, Khist = iLQRsimple_B(x0, xg, u0, Q, R, Qf, dt,params)
+# xhist, uhist, Khist = iLQRsimple_B(x0, xg, u0, Q, R, Qf, dt,params)
 xhist, uhist, Khist = iLQRsimple_B3(x0, xg, Q, R, Qf, N,dt,params)
 println("solved")
 
@@ -79,42 +75,42 @@ end
 t_plot = 0:dt:(N-1)*dt
 
 
-mat"
-figure
-hold on
-title('Pointing Error')
-ylabel('Degrees')
-xlabel('Time (s)')
-plot($t_plot,$angle_error)
-hold off
-"
-
-mat"
-figure
-hold on
-title('Angular Velocity')
-ylabel('Degrees/second')
-xlabel('Time (s)')
-plot($t_plot,$ω_norm)
-hold off
-"
-
-
-
-mat"
-figure
-hold on
-title('MRP')
-plot($t_plot,$xhist(1:3,:)')
-"
-
-uplot = diagm(params.max_moments)*tanh.(uhist)
-mat"
-figure
-hold on
-title('Magnetic Moment')
-stairs($t_plot(1:end-1),$uplot')
-"
+# mat"
+# figure
+# hold on
+# title('Pointing Error')
+# ylabel('Degrees')
+# xlabel('Time (s)')
+# plot($t_plot,$angle_error)
+# hold off
+# "
+#
+# mat"
+# figure
+# hold on
+# title('Angular Velocity')
+# ylabel('Degrees/second')
+# xlabel('Time (s)')
+# plot($t_plot,$ω_norm)
+# hold off
+# "
+#
+#
+#
+# mat"
+# figure
+# hold on
+# title('MRP')
+# plot($t_plot,$xhist(1:3,:)')
+# "
+#
+# uplot = diagm(params.max_moments)*tanh.(uhist)
+# mat"
+# figure
+# hold on
+# title('Magnetic Moment')
+# stairs($t_plot(1:end-1),$uplot')
+# "
 
 # Khist = vec_from_mat(Khist)
 uhist = vec_from_mat(uhist)
@@ -155,19 +151,21 @@ end
 
 
 dt = 1.0
-N = 400
+N = 300
 t_vec = 0:dt:(N)*dt
 
 X = fill(zeros(6),N)
 
 X[1] = x0
 
-process_noise = sqrt(diagm([.00001*ones(3);.000000001*ones(3)]))
+process_noise = sqrt(diagm([.000001*ones(3);.0000000001*ones(3)]))
+
+point_error = zeros(N-1)
 
 for i = 1:N-1
     t = t_vec[i]
 
-    u = controller(u_t,uhist,x_t,xhist,Khist,t,X[i])
+    u = controller(u_t,uhist,x_t,xhist,Khist,t,X[i]+10*process_noise*randn(6))
 
     # add noise on control input
     u = skew_expm(hat(deg2rad(20)*normalize(randn(3))))*u
@@ -177,6 +175,8 @@ for i = 1:N-1
 
     X[i+1] = rk4(sc_b_dynamics_xdot,t,X[i],u,params,dt)
 
+    point_error[i] = rad2deg(norm(phi_from_p(X[i][1:3])))
+
 end
 
 X = mat_from_vec(X)
@@ -184,6 +184,9 @@ X = mat_from_vec(X)
 mat"
 figure
 hold on
-plot($X(1:3,:)')
+plot($point_error')
 hold off
 "
+end
+
+runit()

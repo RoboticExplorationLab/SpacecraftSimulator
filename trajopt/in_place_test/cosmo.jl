@@ -70,7 +70,7 @@ function create_QCQP(nu,u_max)
 
 end
 
-function cone_proj(x)
+function cone_proj(x::Vector)::Vector
     """Project onto the SOC"""
 
 
@@ -107,7 +107,7 @@ function QCQP_solve!(QCQP::QCQP_struct,P,q)
         # solve linear system
         QCQP.LS_sol .= solve(fA2,[(-QCQP.q + QCQP.σ*QCQP.x_k);(QCQP.b-QCQP.s_k + (1/QCQP.ρ)*QCQP.y_k)])
 
-
+        # put the solution to the linear system in the correct spots
         QCQP.xtilde_kp1 .= QCQP.LS_sol[1:nu]
         QCQP.ν_kp1      .= QCQP.LS_sol[nu+1:end]
 
@@ -126,6 +126,7 @@ function QCQP_solve!(QCQP::QCQP_struct,P,q)
         # reset s
         QCQP.s_k .= QCQP.s_kp1
 
+        # termination criteria
         if rem(k,5)==0
             if norm(QCQP.A*QCQP.x_k + QCQP.s_k - QCQP.b)<1e-4
                 break
