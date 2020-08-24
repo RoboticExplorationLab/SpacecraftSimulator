@@ -526,18 +526,21 @@ colat = colatd_from_latd(lat)
   q           = zeros(105)
 
 
+idxs = []
 # since date is after 2020
 t  = date - 2020
 tc = 1.0
 
-ll  = 3255
+gh = gh[3256:end]
+# ll  = 3255
+ll = 0
 nmx = 13
 
-# nc  = nmx*(nmx+2)
-nc = 195
+nc  = Int(nmx*(nmx+2))
+# nc = 195
 
-# kmx = (nmx+1)*(nmx+2)/2
-kmx = 105
+kmx = Int((nmx+1)*(nmx+2)/2)
+# kmx = 105
 
 r  = alt
 ct          = cos(colat*pi/180)
@@ -599,9 +602,14 @@ ratio = 6371.2/r
            # Synthesis of x, y, and z in geocentric coordinates.
            lm  = ll + l
            one = (tc*gh[lm] + t*gh[lm+nc])*rr
-
+           push!(idxs,lm)
+           push!(idxs,lm+nc)
+           # print(lm)
+           # print(lm)
            if m != 0
                two   = (tc*gh[lm+1] + t*gh[lm+nc+1])*rr
+               push!(idxs,lm+1)
+               push!(idxs,lm+nc+1)
                three = one*cl[m] + two*sl[m]
                x     = x + three*q[k]
                z     = z - (fn + 1)*three*p[k]
