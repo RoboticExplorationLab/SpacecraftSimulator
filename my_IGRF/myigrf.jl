@@ -569,27 +569,31 @@ lat = rad2deg(33)
 elong = rad2deg(76)
 alt = 1.05*R_EARTH/1000
 
-function my_igrf(gh_igrf13,date,alt,lat,elong)
+function my_igrf(gh,date,alt,lat,elong,order)
+"""Truncated IGRF model.
 
+Arguments:
+"""
 # convert altitude to latitude
 colat = colatd_from_latd(lat)
+
+
 # Declaration of variables
-  gh          = copy(gh_igrf13)
-  fn    = 0
-  gn    = 0
-  kmx   = 0
-  ll    = 0
-  nc    = 0
-  nmx   = 0
-  x = 0.0
-  y = 0.0
-  z  = 0.0
-  t  = 0.0
-  tc= 0.0
-  # cl          = zeros(13)
-  # sl          = zeros(13)
-  # p           = zeros(105)
-  # q           = zeros(105)
+fn    = 0
+gn    = 0
+kmx   = 0
+ll    = 0
+nc    = 0
+nmx   = 0
+x     = 0.0
+y     = 0.0
+z     = 0.0
+t     = 0.0
+tc    = 0.0
+# cl          = zeros(13)
+# sl          = zeros(13)
+# p           = zeros(105)
+# q           = zeros(105)
 
 
 idxs = []
@@ -600,7 +604,7 @@ tc = 1.0
 # gh = gh[3256:end]
 # ll  = 3255
 ll = 0
-nmx = 13
+nmx = copy(order)
 
 nc  = Int(nmx*(nmx+2))
 # nc = 195
@@ -713,4 +717,6 @@ ratio = 6371.2/r
    return [x;y;z]
  end
 
- B  = my_igrf(gh_igrf13,date,alt,lat,elong)
+ B1  = my_igrf(gh_igrf13_trim,date,alt,lat,elong,13)
+ B2  = my_igrf(gh_igrf13_trim,date,alt,lat,elong,6)
+ B3  = my_igrf(gh_igrf13_6,date,alt,lat,elong,6)

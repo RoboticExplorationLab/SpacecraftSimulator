@@ -89,6 +89,12 @@ uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
+[[MATLAB]]
+deps = ["Libdl", "SparseArrays", "Test"]
+git-tree-sha1 = "89ab46e322f9216728961119f7131038f5e4d22b"
+uuid = "10e44e05-a98a-55b3-a45b-ba969058deb6"
+version = "0.7.3"
+
 [[Markdown]]
 deps = ["Base64"]
 uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
