@@ -593,17 +593,19 @@ end
 isv = 0
 date = 2020.3
 itype = 2
-lat = deg2rad(33)
-elong = deg2rad(76)
+lat = 33.0
+elong = 76.0
 alt = 1.05*R_EARTH/1000
 
 function my_igrf(gh,date,alt,lat,elong,order)
 """Truncated IGRF model.
 
 Arguments:
+    gh: truncated coefficients
+    date:
 """
 
-ecef_Q_ned = ecef_Q_ned_mat(elong,lat)
+ecef_Q_ned = ecef_Q_ned_mat(deg2rad(elong),deg2rad(lat))
 # convert altitude to latitude
 colat = colatd_from_latd(lat)
 
@@ -746,7 +748,6 @@ ratio = 6371.2/r
 
    return ecef_Q_ned*[x;y;z], idxs
  end
-
 
  B1  = my_igrf(gh_igrf13_trim,date,alt,lat,elong,13)
  B2,idxs  = my_igrf(gh_igrf13_trim,date,alt,lat,elong,5)

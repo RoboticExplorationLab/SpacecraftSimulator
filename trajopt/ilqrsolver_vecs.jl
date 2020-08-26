@@ -47,7 +47,7 @@ function iLQRsimple_B3(x0::Array{Float32,1},
     utraj = fill(zeros(Float32,Nu),N-1)
 
     # cost corresponding to no control
-    J = (N-1)*quad(Q,x0-xg) + quad(Qf,(xtraj[N]-xg))
+    J = (N-1)*.5*quad(Q,x0-xg) + .5*quad(Qf,(xtraj[N]-xg))
 
     # allocate K and l
     K = fill(zeros(Float32,Nu,Nx),N-1)

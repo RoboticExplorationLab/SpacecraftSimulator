@@ -64,26 +64,35 @@ def iLQRsimple_py(x0, xg, utraj0, Q, R, Qf, dt, tol):
     xtraj[:, 0] = x0
     utraj = utraj0
 
-    # Forward simulate using initial controls
-    for k in range(0, N - 1):
-        # J = (
-        #     J
-        #     + 0.5 * (xtraj[:, k] - xg) @ Q @ (xtraj[:, k] - xg)
-        #     + 0.5 * R * utraj[:, k] @ utraj[:, k]
-        # )
-        J += cost(Q, R, (xtraj[:, k] - xg).transpose(), utraj[:, k].transpose())
-        (xtraj[:, k + 1]) = rkstep_xdot(xtraj[:, k], utraj[:, k], dt)
+    xtraj = [np.zeros(Nx) for _ in range(N)]
+    xtraj[0] = x0
+    utraj = [np.zeros(Nu) for _ in range(N - 1)]
 
-    # J = J + 0.5 * (xtraj[:, N - 1] - xg) @ Qf @ (xtraj[:, N - 1] - xg)
-    J += 0.5 * quad(Qf, (xtraj[:, N - 1] - xg).transpose())
+    # # Forward simulate using initial controls
+    # for k in range(0, N - 1):
+    #     # J = (
+    #     #     J
+    #     #     + 0.5 * (xtraj[:, k] - xg) @ Q @ (xtraj[:, k] - xg)
+    #     #     + 0.5 * R * utraj[:, k] @ utraj[:, k]
+    #     # )
+    #     J += cost(Q, R, (xtraj[:, k] - xg).transpose(), utraj[:, k].transpose())
+    #     (xtraj[:, k + 1]) = rkstep_xdot(xtraj[:, k], utraj[:, k], dt)
 
+    # # J = J + 0.5 * (xtraj[:, N - 1] - xg) @ Qf @ (xtraj[:, N - 1] - xg)
+    # J += 0.5 * quad(Qf, (xtraj[:, N - 1] - xg).transpose())
+
+    # print("their way")
+    # print(J)
+    # print("easy way")
+    J = (N - 1) * 0.5 * quad(Q, x0 - xg) + 0.5 * quad(Qf, x0 - xg)
     # pdb.set_trace()
     Jhist.append(J)
 
     S = np.zeros((Nx, Nx))
     s = np.zeros(Nx)
     K = np.zeros((Nu, Nx * (N - 1)))
-    l = (tol + 1) * np.ones((Nu, N - 1))
+    # l = (tol + 1) * np.ones((Nu, N - 1))
+    l = [np.zeros(Nu) for _ in range(N - 1)]
 
     count = 0
     for ii in range(100):
@@ -92,7 +101,7 @@ def iLQRsimple_py(x0, xg, utraj0, Q, R, Qf, dt, tol):
 
         S = Qf
         # s = Qf @ (xtraj[:, N - 1] - xg)
-        s = mul2(Qf, (xtraj[:, N - 1] - xg).transpose())
+        s = mul2(Qf, (xtraj[N - 1] - xg).transpose())
 
         # Backward pass
         for k in range(N - 2, -1, -1):
@@ -100,20 +109,20 @@ def iLQRsimple_py(x0, xg, utraj0, Q, R, Qf, dt, tol):
             # Calculate cost gradients for this time step
             # q = Q @ (xtraj[:, k] - xg)
             # r = R * utraj[:, k]
-            q = mul2(Q, (xtraj[:, k] - xg).transpose())
-            r = mul2(R, utraj[:, k].transpose())
+            q = mul2(Q, (xtraj[k] - xg).transpose())
+            r = mul2(R, utraj[k].transpose())
             # pdb.set_trace()
             # Make assignments for ease of reading
             # Ak = A[:, Nx * k : Nx * (k + 1)]
             # Bk = B[:, Nu * k : Nu * (k + 1)]
-            Ak, Bk = rkstep_jacobians(xtraj[:, k], utraj[:, k], dt)
+            Ak, Bk = rkstep_jacobians(xtraj[k], utraj[k], dt)
 
             # Calculate l and K
             # LH = R + Bk.T @ S @ Bk
             invLH = np.linalg.inv(R + mul3(Bk.transpose(), S, Bk))
 
             # LH = R + quad(S, Bk)
-            l[:, k] = mul2(invLH, (r + mul2(Bk.transpose(), s)))
+            l[k] = mul2(invLH, (r + mul2(Bk.transpose(), s)))
             K[:, Nx * k : Nx * (k + 1)] = mul2(invLH, mul3(Bk.transpose(), S, Ak))
 
             # Calculate new S and s
@@ -130,34 +139,35 @@ def iLQRsimple_py(x0, xg, utraj0, Q, R, Qf, dt, tol):
             snew = (
                 q
                 - mul2(Kk.transpose(), r)
-                + mul3(Kk.transpose(), R, l[:, k])
-                + mul2((Ak - mul2(Bk, Kk)).transpose(), (s - mul3(S, Bk, l[:, k])))
+                + mul3(Kk.transpose(), R, l[k])
+                + mul2((Ak - mul2(Bk, Kk)).transpose(), (s - mul3(S, Bk, l[k])))
             )
             S = Snew
             s = snew
 
         # Forward pass line search with new l and K
-        unew = np.zeros((Nu, N - 1))
-        xnew = np.zeros((Nx, N))
-        xnew[:, 0] = x0
+        # unew = np.zeros((Nu, N - 1))
+        # xnew = np.zeros((Nx, N))
+        # xnew[:, 0] = x0
+        xnew = [np.zeros(Nx) for _ in range(N)]
+        xnew[0] = x0
+        unew = [np.zeros(Nu) for _ in range(N - 1)]
         alpha = 1.0
         Jnew = J + 1
         while Jnew > J:
             Jnew = 0
             for k in range(0, N - 1):
-                unew[:, k] = (
-                    utraj[:, k]
-                    - alpha * l[:, k]
-                    - mul2(K[:, Nx * k : Nx * (k + 1)], (xnew[:, k] - xtraj[:, k]))
+                unew[k] = (
+                    utraj[k]
+                    - alpha * l[k]
+                    - mul2(K[:, Nx * k : Nx * (k + 1)], (xnew[k] - xtraj[k]))
                 )
-                (xnew[:, k + 1]) = rkstep_xdot(xnew[:, k], unew[:, k], dt)
+                (xnew[k + 1]) = rkstep_xdot(xnew[k], unew[k], dt)
 
-                Jnew += cost(
-                    Q, R, (xnew[:, k] - xg).transpose(), unew[:, k].transpose()
-                )
+                Jnew += cost(Q, R, (xnew[k] - xg).transpose(), unew[k].transpose())
 
             # Jnew = Jnew + 0.5 * (xnew[:, N - 1] - xg).T @ Qf @ (xnew[:, N - 1] - xg)
-            Jnew += 0.5 * quad(Qf, (xnew[:, N - 1] - xg).transpose())
+            Jnew += 0.5 * quad(Qf, (xnew[N - 1] - xg).transpose())
             alpha = 0.5 * alpha
 
         dJ = J - Jnew
@@ -172,7 +182,7 @@ def iLQRsimple_py(x0, xg, utraj0, Q, R, Qf, dt, tol):
         # print("Iteration {}".format(count))
         # print("Final l = {}".format(np.max(np.abs(l))), "alpha = {}".format(2 * alpha))
         print(ii)
-        print(alpha)
+        print(2 * alpha)
         print(J)
 
     return xtraj, utraj, K, Jhist
@@ -302,7 +312,7 @@ def main():
 
     xtraj, utraj, K, Jhist = iLQRsimple_py(x0, xg, utraj0, Q, R, Qf, dt, tol)
 
-    # # Plot results
+    # Plot results
     # fig, ax = plt.subplots(2, 2)
     # fig.suptitle("iLQR results")
     # ax[0, 0].plot(xtraj[0, :])

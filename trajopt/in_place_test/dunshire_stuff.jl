@@ -1,4 +1,4 @@
-using LinearAlgebra, Convex, SCS, SparseArrays, Infiltrator, QDLDL
+using LinearAlgebra, SparseArrays, QDLDL
 
 
 struct QCQP_struct
@@ -22,7 +22,7 @@ struct QCQP_struct
 end
 
 
-function create_QCQP(nu,u_max)
+function create_QCQP(nu::Int,u_max::Float64)::QCQP_struct
 
     # solver settings
     ρ = .1
@@ -68,6 +68,7 @@ function create_QCQP(nu,u_max)
                        copy(stilde_kp1)::Array{Float64,1},
                        copy(s_kp1)::Array{Float64,1})
 
+    return QCQP
 end
 
 function cone_proj(x::Vector)::Vector
@@ -101,7 +102,7 @@ function QCQP_solve!(QCQP::QCQP_struct,P::Matrix,q::Vector)
     fA2 = qdldl(QCQP.LS_A)
     nu = length(q)
 
-    for k = 1:30
+    for k = 1:50
 
 
         # solve linear system
@@ -137,99 +138,89 @@ function QCQP_solve!(QCQP::QCQP_struct,P::Matrix,q::Vector)
 end
 
 
-function compare()
-
-    nu = 3
-    u_max = 3.67
-
-    P = randn(nu,nu); P = P'*P;
-    q = randn(nu)
-
-    QCQP = create_QCQP(nu,u_max)
-
-    # convex part
-    x = Variable(nu)
-    problem=minimize(.5*quadform(x,P) + dot(q,x),[norm(x,2)<= u_max])
-
-    t1 = time()
-    Convex.solve!(problem, SCS.Optimizer)
-    convex_time1 = time()-t1
-    # @infiltrate
-    # error()
-
-    @show x.value
-
-    # my part of it
-    t1 = time()
-    QCQP_solve!(QCQP::QCQP_struct,P,q)
-    my_time1 = time()-t1
-
-    @show QCQP.x_k
-
-
-    #now that it is warm, let's speed test it
-    N_trials = 1000
-    convex_times = zeros(N_trials)
-    my_times = zeros(N_trials)
-
-    # for i = 1:N_trials
-    #
-    #     P_new = .1*randn(3,3)
-    #     P += P_new'*P_new
-    #
-    #     # solve again
-    #     t1 = time()
-    #     Convex.solve!(problem, SCS.Optimizer, warmstart=true)
-    #     convex_times[i] = time()-t1
-    #     # @infiltrate
-    #     # error()
-    #
-    #     @show x.value
-    #
-    #     # my part of it
-    #     t1 = time()
-    #     QCQP_solve!(QCQP::QCQP_struct,P,q)
-    #     my_times[i] = time()-t1
-    # end
-    t1 = time()
-    P_first = copy(P)
-    for i = 1:N_trials
-
-        P_new = .1*randn(3,3)
-        P += P_new'*P_new
-
-        # solve again
-        # t1 = time()
-        Convex.solve!(problem, () -> SCS.Optimizer(verbose=false), warmstart=true)
-        # convex_times[i] = time()-t1
-    end
-    convex_times = time() - t1
-    P = copy(P_first)
-    t2 = time()
-    for i = 1:N_trials
-        P_new = .1*randn(3,3)
-        P += P_new'*P_new
-        # @infiltrate
-        # error()
-
-        # @show x.value
-
-        # my part of it
-        # t1 = time()
-        QCQP_solve!(QCQP::QCQP_struct,P,q)
-        # my_times[i] = time()-t1
-    end
-    my_times = time() - t2
-
-    return convex_times, my_times
-end
-
-
-# mat"
-# figure
-# hold on
-# plot($convex_times)
-# plot($my_times)
-# legend('Convex','Mine')
-# hold off
-# end"
+# function compare()
+#
+#     nu = 3
+#     u_max = 3.67
+#
+#     P = randn(nu,nu); P = P'*P;
+#     q = randn(nu)
+#
+#     QCQP = create_QCQP(nu,u_max)
+#
+#     # convex part
+#     x = Variable(nu)
+#     problem=minimize(.5*quadform(x,P) + dot(q,x),[norm(x,2)<= u_max])
+#
+#     t1 = time()
+#     Convex.solve!(problem, SCS.Optimizer)
+#     convex_time1 = time()-t1
+#     # @infiltrate
+#     # error()
+#
+#     @show x.value
+#
+#     # my part of it
+#     t1 = time()
+#     QCQP_solve!(QCQP::QCQP_struct,P,q)
+#     my_time1 = time()-t1
+#
+#     @show QCQP.x_k
+#
+#
+#     #now that it is warm, let's speed test it
+#     N_trials = 1000
+#     convex_times = zeros(N_trials)
+#     my_times = zeros(N_trials)
+#
+#     # for i = 1:N_trials
+#     #
+#     #     P_new = .1*randn(3,3)
+#     #     P += P_new'*P_new
+#     #
+#     #     # solve again
+#     #     t1 = time()
+#     #     Convex.solve!(problem, SCS.Optimizer, warmstart=true)
+#     #     convex_times[i] = time()-t1
+#     #     # @infiltrate
+#     #     # error()
+#     #
+#     #     @show x.value
+#     #
+#     #     # my part of it
+#     #     t1 = time()
+#     #     QCQP_solve!(QCQP::QCQP_struct,P,q)
+#     #     my_times[i] = time()-t1
+#     # end
+#     t1 = time()
+#     P_first = copy(P)
+#     for i = 1:N_trials
+#
+#         P_new = .1*randn(3,3)
+#         P += P_new'*P_new
+#
+#         # solve again
+#         # t1 = time()
+#         Convex.solve!(problem, () -> SCS.Optimizer(verbose=false), warmstart=true)
+#         # convex_times[i] = time()-t1
+#     end
+#     convex_times = time() - t1
+#     P = copy(P_first)
+#     t2 = time()
+#     for i = 1:N_trials
+#         P_new = .1*randn(3,3)
+#         P += P_new'*P_new
+#         # @infiltrate
+#         # error()
+#
+#         # @show x.value
+#
+#         # my part of it
+#         # t1 = time()
+#         QCQP_solve!(QCQP::QCQP_struct,P,q)
+#         # my_times[i] = time()-t1
+#     end
+#     my_times = time() - t2
+#
+#     return convex_times, my_times
+# end
