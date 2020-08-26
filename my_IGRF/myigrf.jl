@@ -1,5 +1,19 @@
 using LinearAlgebra
 
+function ecef_Q_ned_mat(longitude,latitude)
+
+    # ϕ = geoc[2]
+    # λ = geoc[1]
+    ϕ = latitude
+    λ = longitude
+
+    ecef_Q_ned = [-sin(ϕ)*cos(λ)  -sin(λ)  -cos(ϕ)*cos(λ);
+                  -sin(ϕ)*sin(λ)   cos(λ)  -cos(ϕ)*sin(λ);
+                   cos(ϕ)          0.0     -sin(ϕ)]
+
+    return ecef_Q_ned
+end
+
 gh_igrf13 = [
       -31543.,-2298., 5922., -677., 2905.,-1061.,  924., 1121., # 1900
         1022.,-1469., -330., 1256.,    3.,  572.,  523.,  876., # 1900
@@ -545,6 +559,20 @@ gh_igrf13 = [
                             -0.3,     2.8,     5.0,     8.4,   -23.4,     2.9,    # 2020
                             11.0,    -1.5,     9.8,    -1.1,    -5.1,   -13.2,    # 2020
                             -6.3,     1.1,     7.8,     8.8,     0.4,    -9.3]
+
+                            gh_igrf13_5 = [
+                                  -29404.8, -1450.9,  4652.5, -2499.6,  2982.0, -2991.6,    # 2020
+                                    1677.0,  -734.6,  1363.2, -2381.2,   -82.1,  1236.2,    # 2020
+                                     241.9,   525.7,  -543.4,   903.0,   809.5,   281.9,    # 2020
+                                      86.3,  -158.4,  -309.4,   199.7,    48.0,  -349.7,    # 2020
+                                    -234.3,   363.2,    47.7,   187.8,   208.3,  -140.7,    # 2020
+                                    -121.2,  -151.2,    32.3,    13.5,    98.9,    66.0,    # 2020
+                                      65.5,   -19.1,    72.9,    25.1,  -121.5,    52.8,    # 2020
+                                     -36.2,   -64.5,    13.5,     8.9,   -64.7,    68.1,    # 2020
+                                      80.6,   -76.7,   -51.5,    -8.2,   -16.9,    56.5,    # 2020
+                                       2.2,    15.8,    23.5,     6.4,    -2.2,    -7.2,    # 2020
+                                     -27.2,     9.8,    -1.8,    23.7,     9.7,     8.4,    # 2020
+                                     -17.6,   -15.3,    -0.5,    12.8]
 #isv  = 0 (only main fields required)
 
 # date: let's do after 2020
@@ -565,8 +593,8 @@ end
 isv = 0
 date = 2020.3
 itype = 2
-lat = rad2deg(33)
-elong = rad2deg(76)
+lat = deg2rad(33)
+elong = deg2rad(76)
 alt = 1.05*R_EARTH/1000
 
 function my_igrf(gh,date,alt,lat,elong,order)
@@ -574,6 +602,8 @@ function my_igrf(gh,date,alt,lat,elong,order)
 
 Arguments:
 """
+
+ecef_Q_ned = ecef_Q_ned_mat(elong,lat)
 # convert altitude to latitude
 colat = colatd_from_latd(lat)
 
@@ -714,9 +744,10 @@ ratio = 6371.2/r
    x     = x*Cd +   z*sd
    z     = z*Cd - one*sd
 
-   return [x;y;z]
+   return ecef_Q_ned*[x;y;z], idxs
  end
 
+
  B1  = my_igrf(gh_igrf13_trim,date,alt,lat,elong,13)
- B2  = my_igrf(gh_igrf13_trim,date,alt,lat,elong,6)
- B3  = my_igrf(gh_igrf13_6,date,alt,lat,elong,6)
+ B2,idxs  = my_igrf(gh_igrf13_trim,date,alt,lat,elong,5)
+ B3, idxs  = my_igrf(gh_igrf13_5,date,alt,lat,elong,5)
