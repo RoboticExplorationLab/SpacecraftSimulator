@@ -427,7 +427,7 @@ function pdot_from_w(p::Vec,w::Vec)::Vec
     # this is the kinematics of the modified rodrigues parameter assuming that
     # attitude is being denoted as N_R_B using the kane/levinson convention
 
-    return ((1+norm(p)^2)/4)*(eye(3) + 2*(hat(p)^2 + hat(p))/(1+norm(p)^2))*w
+    return ((1+norm(p)^2)/4) *(   eye(3) + 2*(hat(p)^2 + hat(p))/(1+norm(p)^2)   )*w
 
 end
 
@@ -546,7 +546,7 @@ function vec_from_mat(mat)
 end
 
 function clamp3d(max_moments::Vec,m::Vec)
-    #TODO: test this 
+    #TODO: test this
     m_out = zeros(3)
 
     for i = 1:3

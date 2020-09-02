@@ -1,9 +1,3 @@
-import time
-import board
-import math
-import ulab as np
-
-
 def mul2(a, b):
     """Multiply two arrays"""
     return np.linalg.dot(a, b)
@@ -29,15 +23,21 @@ def quad(Q, x):
     return mul3(x.transpose(), Q, x)
 
 
+def cost(Q, R, x, u):
+    """Quadratic cost function .5*x'Qx + .5*u'Ru"""
+    return (0.5 * quad(Q, x) + 0.5 * quad(R, u))[0]
+
+
 def reset_list(input_list):
     n = len(input_list[0])
     for i in range(len(input_list)):
         input_list[i] = np.zeros(n)
 
 
-def cost(Q, R, x, u):
-    """Quadratic cost function .5*x'Qx + .5*u'Ru"""
-    return (0.5 * quad(Q, x) + 0.5 * quad(R, u))[0]
+def copy_list(parent, child):
+    n = len(parent[0])
+    for i in range(len(parent)):
+        child[i] = parent[i]
 
 
 def iLQRsimple_py(x0, xg, utraj0, Q, R, Qf, dt, tol):
@@ -47,7 +47,6 @@ def iLQRsimple_py(x0, xg, utraj0, Q, R, Qf, dt, tol):
     N = utraj0.shape[1] + 1
 
     J = 0.0
-    Jhist = []
 
     xtraj = [np.zeros(Nx) for _ in range(N)]
     xtraj[0] = x0
@@ -58,12 +57,14 @@ def iLQRsimple_py(x0, xg, utraj0, Q, R, Qf, dt, tol):
         Qf, (x0 - xg).transpose()
     )[0]
 
-    Jhist.append(J)
     S = np.zeros((Nx, Nx))
     s = np.zeros(Nx)
     K = np.zeros((Nu, Nx * (N - 1)))
     K = [np.zeros((Nu, Nx)) for _ in range(N - 1)]
     l = [np.zeros(Nu) for _ in range(N - 1)]
+    xnew = [np.zeros(Nx) for _ in range(N)]
+    xnew[0] = x0
+    unew = [np.zeros(Nu) for _ in range(N - 1)]
 
     count = 0
     for ii in range(50):
@@ -102,9 +103,10 @@ def iLQRsimple_py(x0, xg, utraj0, Q, R, Qf, dt, tol):
             s = snew
 
         # Forward pass line search with new l and K
-        xnew = [np.zeros(Nx) for _ in range(N)]
-        xnew[0] = x0
-        unew = [np.zeros(Nu) for _ in range(N - 1)]
+        # reset_list(xnew)
+        # reset_list(unew)
+        # xnew[0] = x0
+
         alpha = 1.0
         Jnew = J + 1
         while Jnew > J:
@@ -123,10 +125,11 @@ def iLQRsimple_py(x0, xg, utraj0, Q, R, Qf, dt, tol):
             alpha = 0.5 * alpha
 
         dJ = J - Jnew
-        xtraj = xnew
-        utraj = unew
+
+        copy_list(xnew, xtraj)
+        copy_list(unew, utraj)
+
         J = Jnew
-        Jhist.append(J)
 
         if dJ < 0.1:
             break
@@ -135,7 +138,7 @@ def iLQRsimple_py(x0, xg, utraj0, Q, R, Qf, dt, tol):
         print(2 * alpha)
         print(J)
 
-    return xtraj, utraj, K, Jhist
+    return xtraj, utraj, K
 
 
 def rkstep_xdot(x0, u0, dt):
@@ -146,6 +149,34 @@ def rkstep_xdot(x0, u0, dt):
     x1 = x0 + dt * xdot2
 
     return x1
+
+
+def rk4step_xdot(x1, u0, dt):
+
+    # xdot1 = dynamics_xdot(0, x0, u0)
+    # k1 = xdot1 * dt
+    # x2
+    # xdot2 = dynamics_xdot(0, x0 + 0.5 * xdot1 * dt, u0)
+
+    # x1 = x0 + dt * xdot2
+    t = 0
+
+    xdot1 = dynamics_xdot(t, x1, u0)
+    k1 = xdot1 * dt
+
+    x2 = x1 + 0.5 * k1
+    xdot2 = dynamics_xdot(t + dt * 0.5, x2, u0)
+    k2 = dt * xdot2
+
+    x3 = x1 + 0.5 * k2
+    xdot3 = dynamics_xdot(t + dt * 0.5, x3, u0)
+    k3 = dt * xdot3
+
+    x4 = x1 + k3
+    xdot4 = dynamics_xdot(t + dt, x4, u0)
+    k4 = dt * xdot4
+
+    return x1 + (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
 
 
 def rkstep_jacobians(x0, u0, dt):
@@ -197,7 +228,7 @@ def dynamics_jacobians(t, x, u):
 # Test the algorithm
 def main2():
 
-    N = 75
+    N = 450
     Nx = 2
     Nu = 1
 
@@ -209,10 +240,10 @@ def main2():
     xg = np.array([math.pi, 0])
     utraj0 = np.zeros((Nu, N - 1))
 
-    dt = 0.1
+    dt = 0.03
     tol = 0.35
 
-    xtraj, utraj, K, Jhist = iLQRsimple_py(x0, xg, utraj0, Q, R, Qf, dt, tol)
+    xtraj, utraj, K = iLQRsimple_py(x0, xg, utraj0, Q, R, Qf, dt, tol)
 
 
 main2()

@@ -1,5 +1,5 @@
 
-using LinearAlgebra, BenchmarkTools
+using LinearAlgebra
 
 f_x(x) = f(t,x,u,params)
 
@@ -41,7 +41,7 @@ function test_me()
 
     u = 2.0
 
-    @time A_fx(x)
+    @show A_fx(x)
 
     # @show A_fun(t,x,3.0,params)
 end

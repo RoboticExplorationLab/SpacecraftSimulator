@@ -2,7 +2,7 @@ using LinearAlgebra, SatelliteDynamics
 
 const SD = SatelliteDynamics
 
-function ecef_Q_ned_mat(longitude,latitude)
+function ecef_Q_ned_mat(longitude::Float64,latitude::Float64)::Matrix
 
     # ϕ = geoc[2]
     # λ = geoc[1]
@@ -15,3 +15,28 @@ function ecef_Q_ned_mat(longitude,latitude)
 
     return ecef_Q_ned
 end
+
+
+# lon = pi/3
+# lat = -pi/4
+#
+# ecef_Q_ned = ecef_Q_ned_mat(lon,lat)
+#
+# # Compute ENZ basis vectors
+#     eE = [-sin(lon) ; cos(lon) ; 0]
+#     eN = [-sin(lat)*cos(lon) ; -sin(lat)*sin(lon) ; cos(lat)]
+#     eZ = [cos(lat)*cos(lon) ; cos(lat)*sin(lon) ; sin(lat)]
+#
+#     # Construct Rotation matrix
+#     enz_Q_ecef = hcat(eE, eN, eZ)'
+#
+# ecef_Q_enz = enz_Q_ecef'
+#
+#
+# N1 = ecef_Q_ned[:,1]
+# E1 = ecef_Q_ned[:,2]
+# D1 = ecef_Q_ned[:,3]
+#
+# N2 = ecef_Q_enz[:,2]
+# E2 = ecef_Q_enz[:,1]
+# D2 = -ecef_Q_enz[:,3]

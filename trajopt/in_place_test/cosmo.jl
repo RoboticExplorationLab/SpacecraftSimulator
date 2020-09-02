@@ -1,4 +1,5 @@
 using LinearAlgebra, Convex, SCS, SparseArrays, Infiltrator, QDLDL
+using IterativeSolvers
 
 
 struct QCQP_struct
@@ -68,6 +69,7 @@ function create_QCQP(nu,u_max)
                        copy(stilde_kp1)::Array{Float64,1},
                        copy(s_kp1)::Array{Float64,1})
 
+                       return QCQP
 end
 
 function cone_proj(x::Vector)::Vector
@@ -87,6 +89,38 @@ function cone_proj(x::Vector)::Vector
     return x
 end
 
+function cone_proj2!(QCQP::QCQP_struct)
+    """Project onto the SOC"""
+
+    # n = length(QCQP.s_kp1)
+    # v = view(QCQP.s_kp1,1:(n-1))
+    # s = view(QCQP.s_kp1,n)
+    v = QCQP.s_kp1[1:(end-1)]
+    s = QCQP.s_kp1[end]
+
+    nv = norm(v)
+    if nv<=-s
+        QCQP.s_kp1 .= 0.0
+    elseif nv>= abs(s)
+        QCQP.s_kp1 .= .5*(1 + s/nv)*[v;nv]
+    end
+
+end
+
+function cone_proj!(QCPQ::QCQP_struct)
+    """Project onto the SOC"""
+
+
+    # v = x[1:(end-1)]
+    # s = x[end]
+
+    nv = norm(QCQP.s_kp1[1:end-1])
+    if nv<=-x[end]
+        QCQP.s_kp1 .= zeros(length(QCQP.s_kp1))
+    elseif nv>= abs(QCQP.s_kp1[end])
+        QCQP.s_kp1 .= .5*(1 + QCQP.s_kp1[end]/nv)*[QCQP.s_kp1[1:(end-1)];nv]
+    end
+end
 
 function QCQP_solve!(QCQP::QCQP_struct,P::Matrix,q::Vector)
 
@@ -98,14 +132,15 @@ function QCQP_solve!(QCQP::QCQP_struct,P::Matrix,q::Vector)
     QCQP.LS_A[1:length(q),1:length(q)] .= P + QCQP.σ*I
 
     # this is the new allocation each time
-    fA2 = qdldl(QCQP.LS_A)
+    # fA2 = qdldl(QCQP.LS_A)
     nu = length(q)
 
     for k = 1:30
 
 
         # solve linear system
-        QCQP.LS_sol .= solve(fA2,[(-QCQP.q + QCQP.σ*QCQP.x_k);(QCQP.b-QCQP.s_k + (1/QCQP.ρ)*QCQP.y_k)])
+        # QCQP.LS_sol .= solve(fA2,[(-QCQP.q + QCQP.σ*QCQP.x_k);(QCQP.b-QCQP.s_k + (1/QCQP.ρ)*QCQP.y_k)])
+        minres!(QCQP.LS_sol,QCQP.LS_A,[(-QCQP.q + QCQP.σ*QCQP.x_k);(QCQP.b-QCQP.s_k + (1/QCQP.ρ)*QCQP.y_k)];tol = 1e-3)
 
         # put the solution to the linear system in the correct spots
         QCQP.xtilde_kp1 .= QCQP.LS_sol[1:nu]
@@ -118,7 +153,9 @@ function QCQP_solve!(QCQP::QCQP_struct,P::Matrix,q::Vector)
         QCQP.x_k .= QCQP.α*QCQP.xtilde_kp1 + (1-QCQP.α)*QCQP.x_k
 
         # update s
-        QCQP.s_kp1 .= cone_proj(QCQP.α*QCQP.stilde_kp1 + (1-QCQP.α)*QCQP.s_k + (1/QCQP.ρ)*QCQP.y_k)
+        # QCQP.s_kp1 .= cone_proj(QCQP.α*QCQP.stilde_kp1 + (1-QCQP.α)*QCQP.s_k + (1/QCQP.ρ)*QCQP.y_k)
+        QCQP.s_kp1 .= QCQP.α*QCQP.stilde_kp1 + (1-QCQP.α)*QCQP.s_k + (1/QCQP.ρ)*QCQP.y_k
+        cone_proj2!(QCQP)
 
         # update y
         QCQP.y_k .= QCQP.y_k + QCQP.ρ*(QCQP.α*QCQP.stilde_kp1 + (1-QCQP.α)*QCQP.s_k - QCQP.s_kp1)
@@ -127,11 +164,17 @@ function QCQP_solve!(QCQP::QCQP_struct,P::Matrix,q::Vector)
         QCQP.s_k .= QCQP.s_kp1
 
         # termination criteria
-        if rem(k,5)==0
-            if norm(QCQP.A*QCQP.x_k + QCQP.s_k - QCQP.b)<1e-4
+        if rem(k,4)==0
+            if norm(QCQP.A*QCQP.x_k + QCQP.s_k - QCQP.b)<1e-3
                 break
             end
         end
+
+        # if k==30
+        #     @infiltrate
+        #     error()
+        # end
+
 
     end
 end
@@ -140,7 +183,7 @@ end
 function compare()
 
     nu = 3
-    u_max = 3.67
+    u_max = 5.0
 
     P = randn(nu,nu); P = P'*P;
     q = randn(nu)
@@ -168,7 +211,7 @@ function compare()
 
 
     #now that it is warm, let's speed test it
-    N_trials = 1000
+    N_trials = 5000
     convex_times = zeros(N_trials)
     my_times = zeros(N_trials)
 
@@ -195,20 +238,23 @@ function compare()
     P_first = copy(P)
     for i = 1:N_trials
 
-        P_new = .1*randn(3,3)
+        P_new = .5*randn(nu,nu)
         P += P_new'*P_new
-
+        # P = randn(nu,nu); P = P'*P;
+        # q = randn(nu)
         # solve again
         # t1 = time()
-        Convex.solve!(problem, () -> SCS.Optimizer(verbose=false), warmstart=true)
+        Convex.solve!(problem, () -> SCS.Optimizer(verbose=false), warmstart=false)
         # convex_times[i] = time()-t1
     end
     convex_times = time() - t1
     P = copy(P_first)
     t2 = time()
     for i = 1:N_trials
-        P_new = .1*randn(3,3)
+        P_new = .5*randn(nu,nu)
         P += P_new'*P_new
+        # P = randn(nu,nu); P = P'*P;
+        # q = randn(nu)
         # @infiltrate
         # error()
 
@@ -221,10 +267,12 @@ function compare()
     end
     my_times = time() - t2
 
+    @show convex_times/my_times
+
     return convex_times, my_times
 end
 
-
+convex_times, my_times = compare()
 # mat"
 # figure
 # hold on

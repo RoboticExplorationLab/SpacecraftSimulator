@@ -149,3 +149,44 @@ end
         end
     end
 end
+
+
+@testset "ECEF<->NED" begin
+    let
+
+        for i = 1:1000
+            # lon = pi/3
+            # lat = -pi/4
+            lon = rand_in_range(-pi,pi)
+            lat = rand_in_range(-pi/2,pi/2)
+
+            # here is my function
+            ecef_Q_ned = ecef_Q_ned_mat(lon,lat)
+
+            # here is the SD stuff
+            # Compute ENZ basis vectors
+            eE = [-sin(lon) ; cos(lon) ; 0]
+            eN = [-sin(lat)*cos(lon) ; -sin(lat)*sin(lon) ; cos(lat)]
+            eZ = [cos(lat)*cos(lon) ; cos(lat)*sin(lon) ; sin(lat)]
+
+            # Construct Rotation matrix
+            enz_Q_ecef = hcat(eE, eN, eZ)'
+            ecef_Q_enz = enz_Q_ecef'
+
+            # get the two vectors
+            N1 = ecef_Q_ned[:,1]
+            E1 = ecef_Q_ned[:,2]
+            D1 = ecef_Q_ned[:,3]
+
+            N2 = ecef_Q_enz[:,2]
+            E2 = ecef_Q_enz[:,1]
+            D2 = -ecef_Q_enz[:,3]
+
+            @test isapprox(N1,N2,rtol = 1e-6)
+            @test isapprox(E1,E2,rtol = 1e-6)
+            @test isapprox(D1,D2,rtol = 1e-6)
+
+        end
+
+    end
+end

@@ -1,17 +1,22 @@
-function sc_b_dynamics(t,x,u,params)
-
-# @infiltrate
-# error()
 # B_eci = interp1(params.t_vec,params.B_save,t)
 
-T = 50*60
-B_eci = 3e-5*[sin(2*pi*t/T + pi/2);sin(2*pi*t/T - pi/3);sin(2*pi*t/T + 3*pi/2)]
 
-max_moments = params.max_moments
+B_eci = vec([1.2,3.4,-5.6])
+p = vec([1,2,8.3])
+w = vec([4,3.4,-4.3])
+m = vec([.3,.6,-1.3])
+J = [1.959e-4 2016.333e-9 269.176e-9...
+           2016.333e-9 1.999e-4 2318.659e-9...
+           269.176e-9 2318.659e-9 1.064e-4]
+invJ = 1e3*[5.105190043647774  -0.051357738055630  -0.011796180015288
+  -0.051357738055630   5.004282688631113  -0.108922940075563
+  -0.011796180015288  -0.108922940075563   9.400899721840833]
+
+max_moments = vec([8.8e-3,1.373e-2,8.2e-3])
 # x = x[:]
-p = x[1:3]
-w = x[4:6]
-m = copy(u)
+# p = x[1:3]
+# w = x[4:6]
+# m = copy(u)
 
 p1 = p[1]
 p2 = p[2]
@@ -26,8 +31,8 @@ wx = w[1]
 wy = w[2]
 wz = w[3]
 
-J = params.J
-invJ = params.invJ
+# J = params.J
+# invJ = params.invJ
 
 
 pdot = pdot_from_w(p,w)
@@ -71,60 +76,3 @@ tauB = diagm(max_moments)*[ -1*(tanh(1*taux)^2 - 1)      0   0;
 
 B = [zeros(3,3);
      invJ*hat(-B_body)*tauB]
-
-# % dxdot = [A,B];
-
-      return xdot, A, B
-end
-
-
-function sc_b_dynamics_xdot(t,x,u,params)
-
-      # u = interp1(params.u_t,uhist,t)
-      xdot, A, B = sc_b_dynamics(t,x,u,params)
-
-      return xdot
-end
-# function sc_b_dynamics_jacobians(t,x,u,params)
-#
-#       # u = interp1(params.u_t,uhist,t)
-#       xdot, A, B = sc_b_dynamics(t,x,u,params)
-#
-#       return A, B
-# end
-
-function rk4(f,t_n,x_n,u,params,dt)
-    # standard rk4
-
-    k1 = dt*f(t_n,x_n,u,params)
-    k2 = dt*f(t_n+dt/2, x_n+k1/2,u,params)
-    k3 = dt*f(t_n+dt/2, x_n+k2/2,u,params)
-    k4 = dt*f(t_n+dt, x_n+k3,u,params)
-
-    x_np1 = (x_n + (1/6)*(k1+2*k2+2*k3 + k4))
-
-        return x_np1
-end
-
-
-## here we forward diff the dynamics
-# t = 403.4
-# u = randn(3)
-#
-# x_test = randn(6)
-#
-#
-# fwd_f(x) = sc_b_dynamics2(t,x,u,params)
-# J = x -> ForwardDiff.jacobian(fwd_f,x)
-#
-#
-# xdot,A,B = sc_b_dynamics(t,x_test,u,params)
-#
-# Afd = J(x_test)
-#
-#
-# fwd_u(u) = sc_b_dynamics2(t,x_test,u,params)
-#
-# J_2 = u -> ForwardDiff.jacobian(fwd_u,u)
-#
-# Bfd = J_2(u)

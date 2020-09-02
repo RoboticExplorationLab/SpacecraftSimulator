@@ -583,26 +583,30 @@ gh_igrf13 = [
 
 # elongitude (degrees)
 
-R_EARTH     = 6.378136300e6 # m
-function colatd_from_latd(latd)
-
-    return 90 -latd
-end
-
-
-isv = 0
-date = 2020.3
-itype = 2
-lat = 33.0
-elong = 76.0
-alt = 1.05*R_EARTH/1000
+# R_EARTH     = 6.378136300e6 # m
+# function colatd_from_latd(latd)
+#
+#     return 90 -latd
+# end
+#
+#
+# isv = 0
+# date = 2020.3
+# itype = 2
+# lat = 33.0
+# elong = 76.0
+# alt = 1.05*R_EARTH/1000
 
 function my_igrf(gh,date,alt,lat,elong,order)
 """Truncated IGRF model.
 
 Arguments:
     gh: truncated coefficients
-    date:
+    date: decimal date
+    alt: radius from center of earth (km)
+    lat: latitude (degrees)
+    elong: east longitude (degrees)
+    order: order of IGRF model
 """
 
 ecef_Q_ned = ecef_Q_ned_mat(deg2rad(elong),deg2rad(lat))
@@ -746,9 +750,29 @@ ratio = 6371.2/r
    x     = x*Cd +   z*sd
    z     = z*Cd - one*sd
 
-   return ecef_Q_ned*[x;y;z], idxs
+   # return ecef_Q_ned*[x;y;z], idxs
+   return [x;y;z], idxs
  end
 
- B1  = my_igrf(gh_igrf13_trim,date,alt,lat,elong,13)
- B2,idxs  = my_igrf(gh_igrf13_trim,date,alt,lat,elong,5)
+
+ R_EARTH     = 6.378136300e6 # m
+ function colatd_from_latd(latd)
+
+     return 90 -latd
+ end
+
+
+ isv = 0
+ date = 2020.3
+ itype = 2
+ lat = 34.567
+ elong = 45.678
+ alt = 1.05*R_EARTH/1000
+
+
+ B1, idxs1  = my_igrf(gh_igrf13_trim,date,alt,lat,elong,13)
+ # B2,idxs  = my_igrf(gh_igrf13_trim,date,alt,lat,elong,5)
  B3, idxs  = my_igrf(gh_igrf13_5,date,alt,lat,elong,5)
+
+
+# test case one

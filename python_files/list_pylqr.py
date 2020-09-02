@@ -210,34 +210,77 @@ def iLQRsimple_py(x0, xg, utraj0, Q, R, Qf, dt, tol):
 #     return x1, A, B
 
 
-def rkstep_xdot(x0, u0, dt):
+# def rkstep_xdot(x0, u0, dt):
 
-    # Define constants
-    Nx = x0.shape[0]
-    Nu = u0.shape[0]
+#     # Define constants
+#     Nx = x0.shape[0]
+#     Nu = u0.shape[0]
 
-    xdot1 = dynamics_xdot(0, x0, u0)
-    xdot2 = dynamics_xdot(0, x0 + 0.5 * xdot1 * dt, u0)
+#     xdot1 = dynamics_xdot(0, x0, u0)
+#     xdot2 = dynamics_xdot(0, x0 + 0.5 * xdot1 * dt, u0)
 
-    x1 = x0 + dt * xdot2
+#     x1 = x0 + dt * xdot2
 
-    return x1
+#     return x1
 
 
-def rkstep_jacobians(x0, u0, dt):
+def rkstep_jacobians(x1, u0, dt):
 
-    # Define constants
-    Nx = x0.shape[0]
-    Nu = u0.shape[0]
+    # # Define constants
+    # Nx = x0.shape[0]
+    # Nu = u0.shape[0]
 
-    A1, B1 = dynamics_jacobians(0, x0, u0)
-    xdot1 = dynamics_xdot(0, x0, u0)
-    A2, B2 = dynamics_jacobians(0, x0 + 0.5 * xdot1 * dt, u0)
+    # A1, B1 = dynamics_jacobians(0, x0, u0)
+    # xdot1 = dynamics_xdot(0, x0, u0)
+    # A2, B2 = dynamics_jacobians(0, x0 + 0.5 * xdot1 * dt, u0)
 
-    A = np.eye(2) + dt * A2 + 0.5 * dt * dt * A2 @ A1
-    B = dt * B2 + 0.5 * dt * dt * A2 @ B1
+    # A = np.eye(2) + dt * A2 + 0.5 * dt * dt * A2 @ A1
+    # B = dt * B2 + 0.5 * dt * dt * A2 @ B1
 
-    return A, B
+    # return A, B
+    Nx = 2
+
+    # x1 = x0
+    t = 0.0
+
+    xdot1, A1, B1 = pendulumDynamics_py(t, x1, u0)
+    k1 = xdot1 * dt
+
+    x2 = x1 + 0.5 * k1
+    xdot2, A2, B2 = pendulumDynamics_py(t + dt * 0.5, x2, u0)
+    k2 = dt * xdot2
+
+    x3 = x1 + 0.5 * k2
+    xdot3, A3, B3 = pendulumDynamics_py(t + dt * 0.5, x3, u0)
+    k3 = dt * xdot3
+
+    x4 = x1 + k3
+    xdot4, A4, B4 = pendulumDynamics_py(t + dt, x4, u0)
+    # k4 = dt * xdot4
+
+    # x_tp1 = x1 + (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+    # RK4 method
+    # A_d
+    dk1_dx1 = dt * A1
+    dx2_dx1 = np.eye(Nx) + 0.5 * dk1_dx1
+    dk2_dx1 = dt * mul2(A2, dx2_dx1)
+    dx3_dx1 = np.eye(Nx) + 0.5 * dk2_dx1
+    dk3_dx1 = dt * mul2(A3, dx3_dx1)
+    dx4_dx1 = np.eye(Nx) + dk3_dx1
+    dk4_dx1 = dt * mul2(A4, dx4_dx1)
+    A_d = np.eye(Nx) + (1 / 6) * (dk1_dx1 + 2 * dk2_dx1 + 2 * dk3_dx1 + dk4_dx1)
+
+    # B_d
+    dk1_du = dt * B1
+    dx2_du = 0.5 * dk1_du
+    dk2_du = dt * mul2(A2, dx2_du) + dt * B2
+    dx3_du = 0.5 * dk2_du
+    dk3_du = dt * mul2(A3, dx3_du) + dt * B3
+    dx4_du = 1.0 * dk3_du
+    dk4_du = dt * mul2(A4, dx4_du) + dt * B4
+    B_d = (1 / 6) * (dk1_du + 2 * dk2_du + 2 * dk3_du + dk4_du)
+
+    return A_d, B_d
 
 
 def pendulumDynamics_py(t, x, u):
@@ -276,6 +319,34 @@ def dynamics_xdot(t, x, u):
     return xdot
 
 
+def rkstep_xdot(x1, u0, dt):
+
+    # xdot1 = dynamics_xdot(0, x0, u0)
+    # k1 = xdot1 * dt
+    # x2
+    # xdot2 = dynamics_xdot(0, x0 + 0.5 * xdot1 * dt, u0)
+
+    # x1 = x0 + dt * xdot2
+    t = 0.0
+
+    xdot1 = dynamics_xdot(t, x1, u0)
+    k1 = xdot1 * dt
+
+    x2 = x1 + 0.5 * k1
+    xdot2 = dynamics_xdot(t + dt * 0.5, x2, u0)
+    k2 = dt * xdot2
+
+    x3 = x1 + 0.5 * k2
+    xdot3 = dynamics_xdot(t + dt * 0.5, x3, u0)
+    k3 = dt * xdot3
+
+    x4 = x1 + k3
+    xdot4 = dynamics_xdot(t + dt, x4, u0)
+    k4 = dt * xdot4
+
+    return x1 + (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+
+
 def dynamics_jacobians(t, x, u):
     Nx = x.shape[0]
 
@@ -312,18 +383,23 @@ def main():
 
     xtraj, utraj, K, Jhist = iLQRsimple_py(x0, xg, utraj0, Q, R, Qf, dt, tol)
 
+    # xtraj = np.concatenate(xtraj, axis=0)
+    # numpy.stack( LIST, axis=0 )
+    # pdb.set_trace()
+    xtraj = np.stack(xtraj, axis=0).T
+    utraj = np.stack(utraj, axis=0).T
     # Plot results
-    # fig, ax = plt.subplots(2, 2)
-    # fig.suptitle("iLQR results")
-    # ax[0, 0].plot(xtraj[0, :])
-    # ax[0, 0].set_title("angle")
-    # ax[0, 1].plot(xtraj[1, :])
-    # ax[0, 1].set_title("angular rate")
-    # ax[1, 0].plot(utraj[0, :])
-    # ax[1, 0].set_title("Control")
-    # ax[1, 1].plot(Jhist)
-    # ax[1, 1].set_title("Cost")
-    # plt.show()
+    fig, ax = plt.subplots(2, 2)
+    fig.suptitle("iLQR results")
+    ax[0, 0].plot(xtraj[0, :])
+    ax[0, 0].set_title("angle")
+    ax[0, 1].plot(xtraj[1, :])
+    ax[0, 1].set_title("angular rate")
+    ax[1, 0].plot(utraj[0, :])
+    ax[1, 0].set_title("Control")
+    ax[1, 1].plot(Jhist)
+    ax[1, 1].set_title("Cost")
+    plt.show()
 
 
 if __name__ == "__main__":

@@ -7,7 +7,11 @@ include(joinpath(dirname(@__FILE__),"sc_B_dynamics.jl"))
 include(joinpath(dirname(@__FILE__),"ilqrsolver.jl"))
 # include(joinpath(@__FILE_))
 
-
+# mat"figure
+# hold on
+# plot($B_mat')
+# hold off
+# "
 
 J = convert(Array{Float32,2},[1.959e-4 2016.333e-9 269.176e-9;
            2016.333e-9 1.999e-4 2318.659e-9;
@@ -18,17 +22,19 @@ invJ = inv(J)
 alpha0 = 1
 
 max_moments = convert(Array{Float32,1},[8.8e-3;1.373e-2;8.2e-3])
-dJ_tol = 1e-3
+dJ_tol = 1e-2
 params = (alpha0 = alpha0, t_vec = t_vec, B_save = convert(Array{Array{Float32,1},1},B_save), J = J, invJ = invJ,
 max_moments = max_moments,dJ_tol = dJ_tol)
 
 function runit()
-x0 = [p_from_phi(deg2rad(160)*normalize(randn(3)));zeros(3)]
+# x0 = [p_from_phi(deg2rad(160)*normalize(randn(3)));zeros(3)]
+x0 = vec([0.07500539420980451, 0.7678669790425526, 0.3299131467179552, 0.0, 0.0, 0.0])
 # x0 = vec([-0.569111, 0.08157139, -0.05284032, 0.0, 0.0, 0.0])
 # x0 = vec([-1.4505896726335037, 0.5147044464043511, -1.420337910297834, 0.0, 0.0, 0.0])
 # x0 = vec([-0.17620427335985153, -0.2757563693297543, -0.4756509352005231, 0.0, 0.0, 0.0])
 # x0 = vec([0.2959220196740442, -0.06054147908212846, 0.4920347761245298, 0.0, 0.0, 0.0])
 # x0 = vec([0.53753614, -0.1159876, 0.17588383, 0.0, 0.0, 0.0])
+x0 = vec([-0.274710632045161, 0.6780834943980876, 0.4108832368302142, 0.0, 0.0, 0.0])
 xg = zeros(6)
 
 N = 25
@@ -62,6 +68,7 @@ dt = convert(Float32,dt)
 xhist, uhist, Khist = iLQRsimple_B3(x0, xg, Q, R, Qf, N,dt,params)
 println("solved")
 
+@show xhist[end]
 # Khist = mat_from_vec(Khist)
 uhist = mat_from_vec(uhist)
 xhist = mat_from_vec(xhist)
@@ -181,12 +188,13 @@ end
 
 X = mat_from_vec(X)
 
-mat"
-figure
-hold on
-plot($point_error')
-hold off
-"
+# mat"
+# figure
+# hold on
+# plot($point_error')
+# hold off
+# "
+return point_error
 end
 
-runit()
+point_error = runit()
