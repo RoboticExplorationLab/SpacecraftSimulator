@@ -16,6 +16,14 @@ function ecef_Q_ned_mat(longitude::Float64,latitude::Float64)::Matrix
     return ecef_Q_ned
 end
 
+function geoc_from_ecef(r_ecef::Vector)::Tuple{Float64,Float64}
+    x,y,z = ecef
+
+    lat = atan(z, sqrt(x*x + y*y))
+    lon = atan(y, x)
+
+    return lat, lon
+end
 
 # lon = pi/3
 # lat = -pi/4
