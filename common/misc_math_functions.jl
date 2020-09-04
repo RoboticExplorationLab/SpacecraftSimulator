@@ -288,7 +288,7 @@ function dcm_from_q(q::Vec)::Mat
     """DCM from quaternion, hamilton product, scalar last"""
 
     # pull our the parameters from the quaternion
-    q1,q2,q3,q4 = q
+    q1,q2,q3,q4 = normalize(q)
 
     # DCM
     Q = [(2*q1^2+2*q4^2-1)   2*(q1*q2 - q3*q4)   2*(q1*q3 + q2*q4);
@@ -315,7 +315,7 @@ function phi_from_q(q::Vec)::Vec
         return zeros(3)
     else
         r = v / normv
-        θ = 2 * atan(normv, s)
+        θ = (2 * atan(normv, s))
         return r * θ
     end
 end
@@ -423,7 +423,6 @@ function dcm_from_p(p::Vec)::Mat
 end
 
 function pdot_from_w(p::Vec,w::Vec)::Vec
-    #TODO:test this
     # this is the kinematics of the modified rodrigues parameter assuming that
     # attitude is being denoted as N_R_B using the kane/levinson convention
 
@@ -432,7 +431,7 @@ function pdot_from_w(p::Vec,w::Vec)::Vec
 end
 
 function p_from_phi(phi::Vec)::Vec
-    #TODO: test this
+    # rodrigues parameter from axis angle
     q = q_from_phi(phi)
     p = p_from_q(q)
 
@@ -440,7 +439,7 @@ function p_from_phi(phi::Vec)::Vec
 end
 
 function phi_from_p(p::Vec)::Vec
-    #TODO: test this
+    #axis angle from rodrigues parameter
     q = q_from_p(p)
     phi = phi_from_q(q)
 
@@ -519,8 +518,8 @@ function interp1(t,B_save,input_t::Number)
 
 end
 
-function vec_from_mat(mat)
-    #TODO: test this
+function vec_from_mat(mat::Matrix)
+    #vector of vectors from matrix of column vectors
 
     s = size(mat)
     if length(s) == 3
@@ -545,8 +544,29 @@ function vec_from_mat(mat)
     return V
 end
 
+function mat_from_vec(a::Union{Array{Array{Float64,1},1},Array{Array{Float32,1},1}})
+    "Turn a vector of vectors into a matrix"
+
+
+    rows = length(a[1])
+    columns = length(a)
+    A = zeros(rows,columns)
+
+    for i = 1:columns
+        A[:,i] = a[i]
+    end
+
+    return A
+end
+
+
 function clamp3d(max_moments::Vec,m::Vec)
-    #TODO: test this
+    #3d vector clamp function
+
+    if minimum(max_moments)<0
+        error("max moments has negative in it")
+    end
+
     m_out = zeros(3)
 
     for i = 1:3
@@ -556,11 +576,19 @@ function clamp3d(max_moments::Vec,m::Vec)
     return m_out
 end
 function hasnan(mat)
-    #TODO: test this
+    #check if matrix has NaN present
 
     if norm(isnan.(vec(mat)))>0.0
         return true
     else
         return false
     end
+end
+
+function phi_shorter(phi)
+    #axis angle for angles less than ±π
+    θ = norm(phi)
+    r = phi/θ
+
+    return r*wrap_to_pm_pi(θ)
 end

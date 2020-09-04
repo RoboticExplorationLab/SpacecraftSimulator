@@ -27,7 +27,7 @@ function SD_propagator(path_to_yaml)
     epcf = epc0 + params.time_params.tf
 
     # Initialize State Vector
-    orb  = SD.EarthInertialState(epc0, eci0, dt=1,
+    orb  = SD.EarthInertialState(epc0, eci0, dt=1.0,
                 mass=100.0, n_grav=params.grav_deg, m_grav=params.grav_order,
                 drag=false, srp=false,
                 moon=false, sun=false,
@@ -54,7 +54,7 @@ eci_mine = [r_eci;v_eci]
 error_mat = eci_SD - eci_mine
 
 @testset "SD propagator reg test" begin
-
+    let
         @test isapprox(norm(error_mat),0.0,rtol = 1e-6)
-
+    end
 end

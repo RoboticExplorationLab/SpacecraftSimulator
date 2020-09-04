@@ -4,12 +4,11 @@ cd(joinpath(ss_sim_path,"virtual_env"))
 Pkg.activate(".")
 
 
-using LinearAlgebra, SatelliteDynamics, SatelliteToolbox, MATLAB, ProgressMeter
+using LinearAlgebra, SatelliteDynamics, MATLAB, ProgressMeter
 using Infiltrator
 
 # keep namespaces consistent
 const SD = SatelliteDynamics
-const ST = SatelliteToolbox
 
 
 

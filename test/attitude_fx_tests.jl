@@ -51,7 +51,7 @@ end
     end
 end
 
-@testset "pure quaternion conversions" begin
+@testset "pure quaternion" begin
     let
         for i = 1:1000
 
@@ -188,5 +188,162 @@ end
 
         end
 
+    end
+end
+
+
+@testset "mrp derivative" begin
+    let
+        ω = deg2rad.([1;2;3])
+
+        tf = 5
+        dt = .001
+        t_vec = 0:dt:tf
+        # integrate the attitudes
+        p = zeros(3)
+        q = [0;0;0;1]
+        for i = 1:length(t_vec)
+            p += dt*pdot_from_w(p,ω)
+            q += dt*.5*q⊙[ω;0]
+        end
+
+
+        dcm_p = dcm_from_p(p)
+        dcm_q = dcm_from_q(q)
+
+
+        err_phi = phi_from_dcm(dcm_p'*dcm_q)
+
+        @test rad2deg(norm(err_phi)) < 1e-5
+
+    end
+end
+
+
+@testset "phi shorter" begin
+    let
+        for i = 1:100
+
+            r = normalize(randn(3))
+            θ = rand_in_range(-pi,pi) + 2*pi
+            phi = θ*r
+            phi_shorter1 = phi_shorter(phi)
+            phi_shorter2 = (θ - 2*pi)*r
+
+            @test isapprox(phi_shorter2,phi_shorter1,rtol = 1e-9)
+
+            phi = rand_in_range(0,2*pi)*normalize(randn(3))
+
+            dcm1 = dcm_from_phi(phi)
+            dcm2 = dcm_from_phi(phi_shorter(phi))
+
+            n = norm(dcm1-dcm2)
+
+            @test n<1e-10
+
+
+            q = randq()
+
+            phi1 = phi_shorter(phi_from_q(q))
+            phi2 = phi_from_q(q_shorter(q))
+
+            @test isapprox(phi1,phi2,rtol = 1e-9)
+        end
+    end
+end
+
+@testset "phi from p" begin
+    let
+        for i = 1:100
+            q = randq()
+            p = p_from_q(q)
+            phi1 = phi_shorter(phi_from_q(q))
+            phi2 = phi_shorter(phi_from_p(p))
+
+            @test isapprox(phi1,phi2,rtol=1e-9)
+
+        end
+    end
+end
+
+@testset "p from phi" begin
+    let
+        for i = 1:100
+            q = q_shorter(randq())
+            phi = phi_from_q(q)
+            p1 = (p_from_q(q))
+            p2 = (p_from_phi(phi_shorter(phi)))
+
+            @test isapprox(p1,p2,rtol=1e-9)
+
+        end
+    end
+end
+
+@testset "hasnan" begin
+    let
+        M = randn(100,100)
+        idx = Int(round(rand_in_range(1,100)))
+        idy = Int(round(rand_in_range(1,100)))
+        idx2 = Int(round(rand_in_range(1,100)))
+        idy2 = Int(round(rand_in_range(1,100)))
+        M[idx,idy] = NaN
+        M[idx2,idy2] = NaN
+
+        @test hasnan(M)
+
+    end
+end
+
+@testset "clamp3d" begin
+    let
+        for i = 1:100
+
+            max = abs.(randn(3))
+
+            x = randn(3)
+
+            xc = clamp3d(max,x)
+
+            for ii = 1:3
+                @test xc[ii] <= max[ii]
+                @test xc[ii] >= -max[ii]
+            end
+
+        end
+    end
+end
+
+@testset "vec from mat" begin
+    let
+
+        i = 3
+        j = 10
+        X = randn(i,j)
+
+        Xv = vec_from_mat(X)
+
+        for ii = 1:i
+            for jj = 1:j
+                @test isapprox(X[ii,jj],Xv[jj][ii],rtol = 1e-9)
+            end
+        end
+
+        X2 = mat_from_vec(Xv)
+
+        @test norm(X2-X) < 1e-9
+    end
+end
+
+@testset "mat from vec" begin
+    let
+        for i = 1:100
+            X = randn(30,50)
+
+            Xv = vec_from_mat(X)
+            X2 = mat_from_vec(Xv)
+
+            @test norm(X2-X) < 1e-9
+        end
     end
 end

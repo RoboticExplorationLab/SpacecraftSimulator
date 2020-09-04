@@ -216,20 +216,3 @@ function initialize_struct(struct_type_name   ::DataType,
 
         return truth
 end
-
-
-
-function mat_from_vec(a::Union{Array{Array{Float64,1},1},Array{Array{Float32,1},1}})
-    "Turn a vector of vectors into a matrix"
-
-
-    rows = length(a[1])
-    columns = length(a)
-    A = zeros(rows,columns)
-
-    for i = 1:columns
-        A[:,i] = a[i]
-    end
-
-    return A
-end

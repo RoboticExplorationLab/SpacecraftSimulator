@@ -1,9 +1,7 @@
 using LinearAlgebra
 using SatelliteDynamics
-using SatelliteToolbox
 using YAML
 const SD = SatelliteDynamics
-const ST = SatelliteToolbox
 
 function config(path_to_config_yaml)
       """This loads in the YAML for the sim run"""
