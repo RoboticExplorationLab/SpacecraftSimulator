@@ -423,15 +423,23 @@ function dcm_from_p(p::Vec)::Mat
 end
 
 function pdot_from_w(p::Vec,w::Vec)::Vec
-    # this is the kinematics of the modified rodrigues parameter assuming that
-    # attitude is being denoted as N_R_B using the kane/levinson convention
+    """kinematics of the modified rodrigues parameter assuming that
+    attitude is being denoted as N_R_B using the kane/levinson convention
+
+    Arguments:
+        p: ᴺpᴮ, MRP, Kane/Levinson convention
+        w: ᴺωᴮ expressed in B
+
+    Returns:
+        ᴺṗᴮ
+    """
 
     return ((1+norm(p)^2)/4) *(   eye(3) + 2*(hat(p)^2 + hat(p))/(1+norm(p)^2)   )*w
 
 end
 
 function p_from_phi(phi::Vec)::Vec
-    # rodrigues parameter from axis angle
+    """rodrigues parameter from axis angle"""
     q = q_from_phi(phi)
     p = p_from_q(q)
 
@@ -439,7 +447,7 @@ function p_from_phi(phi::Vec)::Vec
 end
 
 function phi_from_p(p::Vec)::Vec
-    #axis angle from rodrigues parameter
+    """axis angle from rodrigues parameter"""
     q = q_from_p(p)
     phi = phi_from_q(q)
 
@@ -506,6 +514,13 @@ function interp1(t,B_save,input_t::Number)
     # @infiltrate
     # error()
 
+    # @infiltrate
+    # error()
+
+    # @show lower_idx +2
+    # @show length(B_save)
+    # @show (lower_idx+2)>length(B_save)
+
     if (lower_idx+2)>length(B_save)
         return B_save[end]
     else
@@ -515,6 +530,7 @@ function interp1(t,B_save,input_t::Number)
 
         return (f_lower + δt*(f_upper - f_lower))
     end
+
 
 end
 

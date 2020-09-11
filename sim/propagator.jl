@@ -126,43 +126,43 @@ function sim_driver(path_to_yaml)
 
 end
 
-path_to_yaml = "sim/config_attitude_test0.yml"
-sim_output = sim_driver(path_to_yaml)
-
-q = mat_from_vec(sim_output.truth.ᴺqᴮ)
-ω = mat_from_vec(sim_output.truth.ω)
-
-q_triad = mat_from_vec(sim_output.q_triad)
-
-β = mat_from_vec(sim_output.truth.β)
-β_ekf = mat_from_vec(sim_output.MEKF.β)
-mu = mat_from_vec(sim_output.MEKF.mu)
-mu_w = mu[5:7,:]
-gyro = mat_from_vec(sim_output.sensors.ω)
-
-
-N = size(mu_w,2)
-mekf_point_error = zeros(N)
-triad_point_error = zeros(N)
-for i = 1:N
-    mekf_point_error[i] = q_angle_error(sim_output.truth.ᴺqᴮ[i],mu[1:4,i])
-    triad_point_error[i] = q_angle_error(sim_output.truth.ᴺqᴮ[i],q_triad[:,i])
-end
-
-mat"
-figure
-hold on
-plot($sim_output.t_vec_attitude,$β_ekf')
-plot($sim_output.t_vec_attitude,$β')
-"
-
-mat"
-figure
-hold on
-plot($sim_output.t_vec_attitude, rad2deg($triad_point_error),'.')
-plot($sim_output.t_vec_attitude, rad2deg($mekf_point_error))
-hold off
-"
+# path_to_yaml = "sim/config_attitude_test0.yml"
+# sim_output = sim_driver(path_to_yaml)
+#
+# q = mat_from_vec(sim_output.truth.ᴺqᴮ)
+# ω = mat_from_vec(sim_output.truth.ω)
+#
+# q_triad = mat_from_vec(sim_output.q_triad)
+#
+# β = mat_from_vec(sim_output.truth.β)
+# β_ekf = mat_from_vec(sim_output.MEKF.β)
+# mu = mat_from_vec(sim_output.MEKF.mu)
+# mu_w = mu[5:7,:]
+# gyro = mat_from_vec(sim_output.sensors.ω)
+#
+#
+# N = size(mu_w,2)
+# mekf_point_error = zeros(N)
+# triad_point_error = zeros(N)
+# for i = 1:N
+#     mekf_point_error[i] = q_angle_error(sim_output.truth.ᴺqᴮ[i],mu[1:4,i])
+#     triad_point_error[i] = q_angle_error(sim_output.truth.ᴺqᴮ[i],q_triad[:,i])
+# end
+#
+# mat"
+# figure
+# hold on
+# plot($sim_output.t_vec_attitude,$β_ekf')
+# plot($sim_output.t_vec_attitude,$β')
+# "
+#
+# mat"
+# figure
+# hold on
+# plot($sim_output.t_vec_attitude, rad2deg($triad_point_error),'.')
+# plot($sim_output.t_vec_attitude, rad2deg($mekf_point_error))
+# hold off
+# "
 
 # mat"
 # figure
@@ -179,15 +179,15 @@ hold off
 # plot($sim_output.t_vec_attitude, $mekf_point_error)
 # hold off
 # "
-mat"
-figure
-hold on
-plot($sim_output.t_vec_attitude,$ω')
-plot($sim_output.t_vec_attitude,$gyro')
-"
-mat"
-figure
-hold on
-plot($sim_output.t_vec_attitude,$ω')
-plot($sim_output.t_vec_attitude,$mu_w')
-"
+# mat"
+# figure
+# hold on
+# plot($sim_output.t_vec_attitude,$ω')
+# plot($sim_output.t_vec_attitude,$gyro')
+# "
+# mat"
+# figure
+# hold on
+# plot($sim_output.t_vec_attitude,$ω')
+# plot($sim_output.t_vec_attitude,$mu_w')
+# "

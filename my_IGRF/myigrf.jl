@@ -1,4 +1,4 @@
-using LinearAlgebra
+using LinearAlgebra, Test
 
 # function ecef_Q_ned_mat(longitude,latitude)
 #
@@ -1143,7 +1143,8 @@ ratio = 6371.2/r
 # Bfull52 = my_igrf_5(date,alt,lat,elong)
 #
 # @show Bfull5-Bfull52
-
+@testset "IGRF" begin
+    let
 # test case one
 date = 2020.3
 lat = 34.567
@@ -1199,3 +1200,6 @@ B13_5_1   = my_igrf_13(date,alt,lat,elong,5)
 B5_5_1   = my_igrf_5(date,alt,lat,elong)
 
 @test isapprox(norm(B13_5_1 - B5_5_1),0,rtol = 1e-9)
+
+end
+end

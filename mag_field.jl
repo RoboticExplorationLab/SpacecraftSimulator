@@ -42,7 +42,7 @@ function IGRF13(r_eci::Vector,epc::Epoch)::Vector
     B_ned_nT = my_igrf_13(decimal_date,norm(r_ecef)/1000,latitude,longitude,13)
 
     # NED and ECEF DCM
-    ecef_Q_ned = ecef_Q_ned_mat(longitude,latitude)
+    ecef_Q_ned = ecef_Q_ned_mat(deg2rad(longitude),deg2rad(latitude))
 
     # conver to eci
     B_eci_nT = eci_Q_ecef*ecef_Q_ned*B_ned_nT
