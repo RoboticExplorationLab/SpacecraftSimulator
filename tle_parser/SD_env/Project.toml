@@ -1,0 +1,4 @@
+[deps]
+Infiltrator = "5903a43b-9cc3-4c30-8d17-598619ec4e9b"
+MATLAB = "10e44e05-a98a-55b3-a45b-ba969058deb6"
+SatelliteDynamics = "0e7c1a32-1b9f-5532-88a4-e668712d6a4c"
