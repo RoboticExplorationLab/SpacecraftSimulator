@@ -2,7 +2,7 @@
 
 cd("/Users/kevintracy/devel/SpacecraftSimulator/tle_parser/sat_toolkit_env")
 Pkg.activate(".")
-using SatelliteToolbox, SatelliteDynamics
+using SatelliteToolbox, SatelliteDynamics, HTTP
 const SD = SatelliteDynamics
 # read the TLE's
 # line1 = "1 35933U 09051C   19315.45643387  .00000096  00000-0  32767-4 0  9991"
@@ -12,9 +12,18 @@ const SD = SatelliteDynamics
 # line1 = "1 25544U 98067A   20267.41567050  .00001718  00000-0  39590-4 0  9992"
 # line2 = "2 25544  51.6436 222.3966 0001436  98.6522  47.1481 15.48789843247244"
 
+r = HTTP.get("https://www.celestrak.com/NORAD/elements/cubesat.txt")
+ss = String(r.body)
+
+name_range = findfirst("SONATE",ss)
+
+id = name_range[1]
+
+line1 = ss[id+26:id+94]
+line2 = ss[id+97:id+97+68]
 # SONATE NORAD = 44400
-line1 = "1 44400U 19038Q   20267.59883466  .00000414  00000-0  27750-4 0  9993"
-line2 = "2 44400  97.5499 227.6445 0025856 145.1208 215.1722 15.12040781 67400"
+# line1 = "1 44400U 19038Q   20267.59883466  .00000414  00000-0  27750-4 0  9993"
+# line2 = "2 44400  97.5499 227.6445 0025856 145.1208 215.1722 15.12040781 67400"
 # line1 =
 
 TLEs = read_tle_from_string(line1, line2)

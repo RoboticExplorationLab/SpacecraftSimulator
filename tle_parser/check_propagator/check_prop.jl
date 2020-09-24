@@ -118,13 +118,7 @@ function FODE_J2(r_eci)
     return  (-μ/r^3)*[x*(1 - Re_r_sqr*(five_z_sqr - 1));
                       y*(1 - Re_r_sqr*(five_z_sqr - 1));
                       z*(1 - Re_r_sqr*(five_z_sqr - 3))]
-    # # precompute repeated stuff
-    # Re_r_sqr = (R_EARTH/r)^2
-    # five_z_sqr = 5*z^2/r^2
-    #
-    # return  (-μ/r^3)*[x*(1 - 1.5*J2*Re_r_sqr*(five_z_sqr - 1));
-    #                   y*(1 - 1.5*J2*Re_r_sqr*(five_z_sqr - 1));
-    #                   z*(1 - 1.5*J2*Re_r_sqr*(five_z_sqr - 3))]
+
 end
 
 
@@ -252,5 +246,13 @@ end
 # plot3($X(1,:),$X(2,:),$X(3,:))
 # hold off
 # "
+ten_am_el = el_for_passes[4]
+mat"
+figure
+hold on
+plot($ten_am_el)
+hold of
+"
+
 
 # stanford_ecef = sGEODtoECEF([-122.1697;37.4275;0.0],use_degrees = true)
