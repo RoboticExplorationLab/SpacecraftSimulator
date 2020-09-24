@@ -3,19 +3,7 @@ ss_sim_path =  dirname(dirname(dirname(@__FILE__)))
 cd(joinpath(ss_sim_path,"virtual_env"))
 Pkg.activate(".")
 
-# function myECItoECEF(seconds_from_9_1_2020_to_epoch,seconds_from_epoch)
-#     """ECI to ECEF rotation matrix.
-#
-#     Args:
-#         seconds_from_9_1_2020_to_epoch: (s)
-#         seconds_from_epoch: (s) will be time.monotonic()
-#
-#     Returns:
-#         ECEF_Q_ECI: DCM
-#     """
-#     t = seconds_from_9_1_2020_to_epoch + seconds_from_epoch
-#     return rotz(5.940294244015959 + t*7.292115146706979e-5)
-# end
+
 function rotz(θ)
     """Rotation matrix for rotation about the z axis"""
     return [ cos(θ)  sin(θ) 0
@@ -229,7 +217,7 @@ return X, el_for_passes, pass_timing
 
 end
 
-X, el_for_passes, pass_timing = runit(r,v,jd_epoch)
+X, el_for_passes, pass_timing = runit(r_tle,v_tle,jd_epoch)
 
 X = mat_from_vec(X)
 
@@ -247,12 +235,12 @@ end
 # hold off
 # "
 ten_am_el = el_for_passes[4]
-mat"
-figure
-hold on
-plot($ten_am_el)
-hold of
-"
+# mat"
+# figure
+# hold on
+# plot($ten_am_el)
+# hold off
+# "
 
 
 # stanford_ecef = sGEODtoECEF([-122.1697;37.4275;0.0],use_degrees = true)
