@@ -3,6 +3,7 @@ ss_sim_path =  dirname(dirname(dirname(@__FILE__)))
 cd(joinpath(ss_sim_path,"virtual_env"))
 Pkg.activate(".")
 
+using SOFA
 
 function rotz(θ)
     """Rotation matrix for rotation about the z axis"""
@@ -145,7 +146,7 @@ function runit(r,v,jd_epoch)
 # -714.9400927271462, 692.5574062503943, 7514.06327176573])
 x0 = [r_tle;v_tle]*1000
 # x0 = [-4689.932188;-5096.192909;10.925068;-.703127;0.689545;7.515902]*1000
-dt = 1.0
+dt = 10.0
 
 stanford_ecef = sGEODtoECEF([-122.1697;37.4275;0.0],use_degrees = true)
 # date = jd_to_caldate(2.4591159156705e6)
@@ -153,6 +154,7 @@ stanford_ecef = sGEODtoECEF([-122.1697;37.4275;0.0],use_degrees = true)
 mjd_epoch = jd_epoch - MJD_ZERO
 
 delta_earth_rotation = iauEra00(MJD_ZERO,mjd_epoch)
+@show delta_earth_rotation
 date = jd_to_caldate(jd_epoch)
 # 2.45911543705526e6
 epoch = Epoch(date[1],date[2],date[3],date[4],date[5],date[6],date[7];tsys = "UTC")
@@ -164,8 +166,8 @@ tf = 40*6400.0
 
 t_vec = 0:dt:tf
 
-N = length(t_vec)
-
+#N = length(t_vec)
+N = 2001
 X = fill(zeros(6),N)
 
 X[1] = x0
@@ -219,7 +221,7 @@ end
 
 X, el_for_passes, pass_timing = runit(r_tle,v_tle,jd_epoch)
 
-X = mat_from_vec(X)
+X_mat = mat_from_vec(X)
 
 max_el_each_pass = zeros(length(el_for_passes))
 for i = 1:length(el_for_passes)
@@ -234,7 +236,7 @@ end
 # plot3($X(1,:),$X(2,:),$X(3,:))
 # hold off
 # "
-ten_am_el = el_for_passes[4]
+# ten_am_el = el_for_passes[4]
 # mat"
 # figure
 # hold on
