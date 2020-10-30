@@ -38,7 +38,7 @@ sgp4d = orbp.sgp4d
 # o,r,v = propagate!(orbp,0.0)
 jd_epoch = sgp4d.epoch
 # mjd_epoch = jd_epoch - MJD_ZERO
-mjd_epoch = jd_epoch - 2.4000005e6
+# mjd_epoch = jd_epoch - 2.4000005e6
 
 date_tuple = SD.jd_to_caldate(jd_epoch )
 

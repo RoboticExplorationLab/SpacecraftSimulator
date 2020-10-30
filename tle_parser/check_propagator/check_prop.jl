@@ -40,11 +40,14 @@ function mat_from_vec(a::Union{Array{Array{Float64,1},1},Array{Array{Float32,1},
     return A
 end
 
+# function get_el(r_ecef,r_stanford)
+#     # returns degrees
+#     return 90 - abs(rad2deg(acos(dot(normalize(r_ecef - r_stanford),normalize(r_stanford)))))
+# end
 function get_el(r_ecef,r_stanford)
     # returns degrees
-    return 90 - abs(rad2deg(acos(dot(normalize(r_ecef - r_stanford),normalize(r_stanford)))))
+    return (((dot(normalize(r_ecef - r_stanford),normalize(r_stanford)))))
 end
-
 function visible(el,on_sight,epoch,min_el_deg)
 
     # if you don't already know, we are on sight
@@ -139,35 +142,27 @@ end
 
 function runit(r,v,jd_epoch)
 
-# x0 = vec([6928,0,0,0,-.871817082027,7.5348948722])*1000
 
-
-# x0 = vec([-4.724512772111592e6, -5.064712686679697e6, 27.601182963844654,
-# -714.9400927271462, 692.5574062503943, 7514.06327176573])
 x0 = [r_tle;v_tle]*1000
-# x0 = [-4689.932188;-5096.192909;10.925068;-.703127;0.689545;7.515902]*1000
-dt = 10.0
+
+dt = 2.0
 
 stanford_ecef = sGEODtoECEF([-122.1697;37.4275;0.0],use_degrees = true)
-# date = jd_to_caldate(2.4591159156705e6)
-# jd_epoch = 2.45911543705526e6
+@show stanford_ecef
 mjd_epoch = jd_epoch - MJD_ZERO
 
 delta_earth_rotation = iauEra00(MJD_ZERO,mjd_epoch)
 @show delta_earth_rotation
 date = jd_to_caldate(jd_epoch)
-# 2.45911543705526e6
 epoch = Epoch(date[1],date[2],date[3],date[4],date[5],date[6],date[7];tsys = "UTC")
-# epoch_anchor = epoch
 println(".")
 println("Starting Time")
-# @show epoch
 tf = 40*6400.0
 
 t_vec = 0:dt:tf
 
-#N = length(t_vec)
-N = 2001
+N = length(t_vec)
+# N = 3001
 X = fill(zeros(6),N)
 
 X[1] = x0
@@ -177,14 +172,17 @@ on_sight = false
 pass_timing = []
 el_for_passes = []
 passes = 0
+r_ecef = zeros(3)
 for i = 1:N-1
 
-
-    ECEF_Q_ECI = myECItoECEF(delta_earth_rotation,dt*(i-1))
+    t = dt*(i-1)
+    ECEF_Q_ECI = myECItoECEF(delta_earth_rotation,t)
     # check pass
     # r_ecef = rECItoECEF(epoch)*X[i][1:3]
     r_ecef = ECEF_Q_ECI*X[i][1:3]
     el = get_el(r_ecef,stanford_ecef)
+
+    # @show el
     on_sight = visible(el,on_sight,epoch,min_el_deg)
 
     # keep track of passes
@@ -197,7 +195,7 @@ for i = 1:N-1
     end
     if on_sight
         # push!(pass_timing[passes])
-        push!(el_for_passes[passes],el)
+        push!(el_for_passes[passes],round(el,digits = 3))
     end
     if !on_sight && pre_on_sight
         push!(pass_timing[passes],epoch)
@@ -214,6 +212,9 @@ for i = 1:N-1
     epoch += dt
 end
 
+@show X[N]/1000
+@show r_ecef/1000
+
 
 return X, el_for_passes, pass_timing
 
@@ -226,7 +227,7 @@ X_mat = mat_from_vec(X)
 max_el_each_pass = zeros(length(el_for_passes))
 for i = 1:length(el_for_passes)
     max_el_each_pass[i] = maximum(el_for_passes[i])
-    push!(pass_timing[i],(pass_timing[i][2] - pass_timing[i][1])/60)
+    push!(pass_timing[i],round((pass_timing[i][2] - pass_timing[i][1])/60,digits = 3))
     push!(pass_timing[i],max_el_each_pass[i])
 end
 
