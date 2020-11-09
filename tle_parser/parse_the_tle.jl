@@ -42,8 +42,8 @@ jd_epoch = sgp4d.epoch
 
 date_tuple = SD.jd_to_caldate(jd_epoch )
 
-@show r_tle*1000
-@show v_tle*1000
+@show r_tle
+@show v_tle
 @show jd_epoch
 
 # T = Epoch()
