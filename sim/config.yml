@@ -41,7 +41,25 @@ initial_attitude_conditions:
 
 propagator_parameters:
   epoch: "2018-12-01 16:22:19.0 GPS"         # Epoch (SatelliteDynamics)
-  dt_orbital:      0.1                      # sec
+  dt_orbital:      10.0                      # sec
   dt_attitude:     0.05                      # sec
   dt_controller:   0.1                       # sec
-  final_time_days: 0.5                       # days
+  final_time_days: 0.1                       # days
+
+inertia_properties:
+  sample_new:       false
+  scale_std:        0.10
+  rotate_std_deg:    10.0
+
+sensor_properties:
+  gyro:
+    rotate_std_deg: 0.0
+    noise_std_degps: 0.22
+    initial_bias_deg: 2.0
+    bias_noise_std: 1e-2
+  sun_sensor:
+    rotate_std_deg: 0.0
+    noise_std_deg: 5.0
+  magnetometer:
+    rotate_std_deg: 0.0
+    noise_std_deg: 5.0

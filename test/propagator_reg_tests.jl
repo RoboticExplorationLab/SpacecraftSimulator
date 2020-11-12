@@ -1,4 +1,4 @@
-using LinearAlgebra, SatelliteDynamics
+using LinearAlgebra, SatelliteDynamics, Test
 
 
 # load in the julia and python functions
@@ -8,7 +8,7 @@ include(joinpath(ss_sim_path,"load_julia_functions.jl"))
 
 function SD_propagator(path_to_yaml)
 
-    params,initial_conditions, time_params = config(path_to_yaml)
+    initial_conditions, time_params = config(path_to_yaml)
 
     # initial time
     epc0 = params.initial_conditions.epc_orbital
@@ -27,7 +27,7 @@ function SD_propagator(path_to_yaml)
     epcf = epc0 + params.time_params.tf
 
     # Initialize State Vector
-    orb  = SD.EarthInertialState(epc0, eci0, dt=1,
+    orb  = SD.EarthInertialState(epc0, eci0, dt=1.0,
                 mass=100.0, n_grav=params.grav_deg, m_grav=params.grav_order,
                 drag=false, srp=false,
                 moon=false, sun=false,
@@ -41,13 +41,20 @@ function SD_propagator(path_to_yaml)
 end
 
 
-path_to_yaml = "sim/config0.yml"
+path_to_yaml = "sim/config_orbital_test.yml"
 
 eci_SD = SD_propagator(path_to_yaml)
 
 sim_output = sim_driver(path_to_yaml)
 
+r_eci = mat_from_vec(sim_output.truth.r_eci)
+v_eci = mat_from_vec(sim_output.truth.v_eci)
+eci_mine = [r_eci;v_eci]
 
-error_mat = eci_SD - sim_output.orbital_state
+error_mat = eci_SD - eci_mine
 
-@test isapprox(norm(error_mat),0.0)
+@testset "SD propagator reg test" begin
+    let
+        @test isapprox(norm(error_mat),0.0,rtol = 1e-6)
+    end
+end

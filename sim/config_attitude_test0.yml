@@ -1,0 +1,65 @@
+sc_properties:
+  inertia_rows:
+    - [1.959e-4, 2016.333e-9, 269.176e-9]    # kg⋅m²
+    - [2016.333e-9, 1.999e-4, 2318.659e-9]   # kg⋅m²
+    - [269.176e-9, 2318.659e-9, 1.064e-4]    # kg⋅m²
+  mass:  177.808e-3                          # kg
+  area:  0.01                                # m²
+  cd:    1.5                                 # ()
+  max_dipoles: [8.8e-3,1.373e-2,8.2e-3]      # A⋅m²
+  faces:
+    - [1.0, 0.0, 0.0]
+    - [-1.0, 0.0, 0.0]
+    - [0.0, 1.0, 0.0]
+    - [0.0, -1.0, 0.0]
+    - [0.0, 0.0, 1.0]
+    - [0.0, 0.0, -1.0]
+
+gravity:
+  spherical_harmonic_gravity_bool: true      # ()
+  gravity_order:  6                          # ()
+  gravity_degree: 6                          # ()
+
+environment:
+  drag_bool:              true               # ()
+  srp_bool:               true               # ()
+  gravity_gradient_bool:  true               # ()
+  sun_3rd_body_bool:      false              # ()
+  moon_3rd_body_bool:     false              # ()
+
+initial_orbital_elements:
+  sma:  6.9281363e6                          # m
+  ecc:  0.00069140                           # ()
+  inc:  1.7209103504296768                   # rad      (98.6009ᵒ)
+  raan: 2.22778014514761                     # rad      (127.6424ᵒ)
+  argp: 1.6058739541014786                   # rad      (92.0098ᵒ)
+  M:    4.680781067631073                    # rad      (268.189ᵒ)
+
+initial_attitude_conditions:
+  q0: [0,0,0,1.0]                            # ()       (ᴺqᴮ)
+  w0: [.01, .03, .01]                           # (rad/s)  (ᴺωᴮ, expr. B)
+
+propagator_parameters:
+  epoch: "2016-12-01 16:22:19.0 GPS"         # Epoch (SatelliteDynamics.jl)
+  dt_orbital:      10.0                      # sec
+  dt_attitude:     0.1                      # sec
+  dt_controller:   0.05                       # sec
+  final_time_days: 0.01                     # days
+
+inertia_properties:
+  sample_new:       false
+  scale_std:        0.10
+  rotate_std_deg:    10.0
+
+sensor_properties:
+  gyro:
+    rotate_std_deg: 0.0
+    noise_std_degps: 0.22
+    initial_bias_deg: 2.0
+    bias_noise_std: 1e-2
+  sun_sensor:
+    rotate_std_deg: 0.0
+    noise_std_deg: 5.0
+  magnetometer:
+    rotate_std_deg: 0.0
+    noise_std_deg: 5.0

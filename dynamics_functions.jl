@@ -30,6 +30,11 @@ function FODE(epc::Epoch,eci_state::Vec,u::Vec)::Vec
         a_eci = FODE_J2(r_eci) + u
     end
 
+    # atmospheric drag
+    # ρ = density_harris_priester(orbital_state[1:3,kk], r_sun_eci)
+    # ecef_Q_eci = SD.rECItoECEF(epc_orbital)
+    # a_drag = accel_drag(orbital_state[:,kk], ρ, params.sc.mass,
+    #                     params.sc.area, params.sc.cd, ecef_Q_eci)
 
     return [v_eci;a_eci]
 end
@@ -55,7 +60,7 @@ end
 
 
 function rk4_orbital(f::Function, t_n::RealorEpoch, x_n::Vec, u::Vec,
-                                                              h::Real)::Vec
+                                                              h::Real)::Tuple
     """Runge-Kutta 4th order integration. Epoch for time.
 
     Args:
@@ -74,12 +79,15 @@ function rk4_orbital(f::Function, t_n::RealorEpoch, x_n::Vec, u::Vec,
     k3 = h*f(t_n+h/2,x_n+k2/2,u)
     k4 = h*f(t_n+h,x_n+k3,u)
 
-    # @infiltrate
-    return (x_n + (1/6)*(k1+2*k2+2*k3 + k4))
+    x_np1 = (x_n + (1/6)*(k1+2*k2+2*k3 + k4))
+
+
+
+    return x_np1[1:3], x_np1[4:6], t_n+h
 end
 
-function rk4_attitude(f::Function, t_n::RealorEpoch, x_n::Vec, m::Vec,
-                                    B_eci_nT::Vec, τ::Vec, h::Real)::Vec
+function rk4_attitude(f::Function, t_n::RealorEpoch, x_n::Vec, bias::Vec, m::Vec,
+                                    B_eci_nT::Vec, τ::Vec, h::Real)::Tuple
     """Runge-Kutta 4th order integration. Epoch for time.
 
     Args:
@@ -101,8 +109,11 @@ function rk4_attitude(f::Function, t_n::RealorEpoch, x_n::Vec, m::Vec,
 
     x_np1 = (x_n + (1/6)*(k1+2*k2+2*k3 + k4));
     x_np1[1:4] = normalize(x_np1[1:4])
-    # @infiltrate
-    return x_np1
+
+    # gyro bias
+    bias_update = bias + deg2rad(params.sensors.gyro.bias_noise_std)*randn(3)
+
+    return x_np1[1:4], x_np1[5:7], bias_update
 end
 
 function spacecraft_eom(t, x, m, B_eci_nT, τ)
@@ -114,15 +125,14 @@ function spacecraft_eom(t, x, m, B_eci_nT, τ)
             - quaternion (scalar last) ᴺqᴮ
             - angular velocity of the sc (rad/s, expressed in body)
         m: magnetic moment control (A⋅m^2)
-        B_eci_nT: magnetic field in ECI (nT)
+        B_eci_nT: magnetic field in ECI (T)
         τ: external torque (n⋅m^2)
 
     Returns:
         xdot: state derivative
 
     """
-    # @infiltrate
-    # error()
+
     # unpack state
     ᴺqᴮ = x[1:4]
     ᴺωᴮ = x[5:7]
@@ -142,7 +152,6 @@ function spacecraft_eom(t, x, m, B_eci_nT, τ)
     # angular acceleration
     ᴺαᴮ = invJ*(τ + magnetic_moment - ᴺωᴮ × (J * ᴺωᴮ) )
 
-    # @infiltrate
 
     return [ᴺq̇ᴮ; ᴺαᴮ]
 end

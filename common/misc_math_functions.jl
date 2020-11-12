@@ -71,6 +71,10 @@ function skew_from_vec(v::Vec)::Mat
     return [0 -v[3] v[2]; v[3] 0 -v[1]; -v[2] v[1] 0]
 end
 
+function hat(v::Vec)::Mat
+    return skew_from_vec(v)
+end
+
 function vec_from_skew(mat::Mat)::Vec
     """Converts 3x3 skew symmetric matrix to a 3x1 vector.
 
@@ -83,6 +87,43 @@ function vec_from_skew(mat::Mat)::Vec
 
     return [mat[3, 2]; mat[1, 3]; mat[2, 1]]
 end
+
+function eye(n::Int)::Mat
+    return diagm(ones(n))
+end
+
+function product_of_diagonals(Q::Mat)::Float64
+    sum = 1.0
+    for i = 1:size(Q,1)
+        sum *= Q[i,i]
+    end
+    return sum
+end
+
+function mvnrnd(μ::Vec,Σ::Mat)::Vec
+
+    if product_of_diagonals(Q) != 0.0
+        return Matrix(cholesky(Σ))*randn(length(μ))+vec(μ)
+    else
+        return sqrt(Σ)*randn(length(μ))+vec(μ)
+    end
+
+end
+
+function fast_mvnrnd(sqrtΣ)
+    return sqrtΣ*randn(size(sqrtΣ,1))
+end
+
+
+function unhat(mat::Mat)::Vec
+    return vec_from_skew(mat)
+end
+
+function dcm_from_phi(phi::Vec)::Mat
+    """DCM from axis angle (phi)"""
+    return skew_expm(skew_from_vec(phi))
+end
+
 
 function skew_expm(B::Mat)::Mat
     """Expm for skew symmetric matrices.
@@ -154,6 +195,42 @@ function ortho_logm(Q::Mat)::Mat
     return skew_from_vec(phi)
 end
 
+function phi_from_dcm(Q::Mat)::Vec
+    # TODO: test this
+    """Matrix logarithm for 3x3 orthogonal matrices (like DCM's).
+
+    Summary:
+        This is both faster and more robust than log.jl (180 degree rotations)
+
+    Args:
+        Q: orthogonal matrix (like a DCM) :: AbstractArray{Float64,2}
+
+    Returns:
+        skew symmetric matrix :: AbstractArray{Float64,2}
+    """
+
+    val = (tr(Q) - 1) / 2
+
+    if abs(val - 1) < 1e-10
+        # no rotation
+        phi = [0.0; 0.0; 0.0]
+    elseif abs(val + 1) < 1e-10
+        # 180 degree rotation
+        M = I + Q
+        r = M[1, :] / norm(M[1, :])
+        theta = pi
+        phi = r * theta
+    else
+        # normal rotation (0-180 degrees)
+        theta = acos(val)
+        r = -(1 / (2 * sin(theta))) *
+            [Q[2, 3] - Q[3, 2]; Q[3, 1] - Q[1, 3]; Q[1, 2] - Q[2, 1]]
+        phi = r * theta
+    end
+
+    return phi
+end
+
 function rand_in_range(lower::Real, upper::Real)::Real
     """Random number within range with a uniform distribution.
 
@@ -190,7 +267,7 @@ function active_rotation_axis_angle(axis::Vec,theta::Real,vector::Vec)::Vec
 end
 
 
-function ⊙(q1, q2)
+function ⊙(q1::Vec, q2::Vec)::Vec
     """Quaternion multiplication, hamilton product, scalar last"""
 
     v1 = q1[1:3]
@@ -202,11 +279,16 @@ function ⊙(q1, q2)
 
 end
 
-function dcm_from_q(q)
+function qdot(q1::Vec,q2::Vec)::Vec
+    return (q1 ⊙ q2)
+end
+
+
+function dcm_from_q(q::Vec)::Mat
     """DCM from quaternion, hamilton product, scalar last"""
 
     # pull our the parameters from the quaternion
-    q1,q2,q3,q4 = q
+    q1,q2,q3,q4 = normalize(q)
 
     # DCM
     Q = [(2*q1^2+2*q4^2-1)   2*(q1*q2 - q3*q4)   2*(q1*q3 + q2*q4);
@@ -216,13 +298,13 @@ function dcm_from_q(q)
     return Q
 end
 
-function qconj(q)
+function qconj(q::Vec)::Vec
     """Conjugate of the quaternion (scalar last)"""
 
     return [-q[1:3]; q[4]]
 end
 
-function phi_from_q(q)
+function phi_from_q(q::Vec)::Vec
     """axis angle from quaternion (scalar last)"""
 
     v = q[1:3]
@@ -233,12 +315,12 @@ function phi_from_q(q)
         return zeros(3)
     else
         r = v / normv
-        θ = 2 * atan(normv, s)
+        θ = (2 * atan(normv, s))
         return r * θ
     end
 end
 
-function q_from_phi(ϕ)
+function q_from_phi(ϕ::Vec)::Vec
     """Quaternion from axis angle vector, scalar last"""
 
     θ = norm(ϕ)
@@ -250,7 +332,7 @@ function q_from_phi(ϕ)
     end
 end
 
-function q_from_dcm(dcm)
+function q_from_dcm(dcm::Mat)::Vec
     """Kane/Levinson convention, scalar last"""
     R = dcm
     T = R[1,1] + R[2,2] + R[3,3]
@@ -287,14 +369,242 @@ function q_from_dcm(dcm)
     return q
 end
 
-function randq()
+function randq()::Vec
     return normalize(randn(4))
 end
 
-function q_shorter(q)
+function q_shorter(q::Vec)::Vec
 
     if q[4]<0
         q = -q
     end
     return q
+end
+
+
+function H()::Mat
+    """matrix for converting vector to pure quaternion. Scalar last"""
+    return [1 0 0;
+            0 1 0;
+            0 0 1;
+            0 0 0.0]
+end
+
+
+function g_from_q(q::Vec)::Vec
+    """Rodgrigues parameter from quaternion (scalar last)"""
+    return q[1:3]/q[4]
+end
+
+function q_from_g(g::Vec)::Vec
+    """Quaternion (scalar last) from Rodrigues parameter"""
+    return (1/sqrt(1+dot(g,g)))*[g;1]
+end
+
+function dcm_from_g(g::Vec)::Mat
+    """DCM form Rodrigues parameter"""
+    return I +  2*(skew_from_vec(g)^2 + skew_from_vec(g))/(1 + dot(g,g))
+end
+
+function p_from_q(q::Vec)::Vec
+    """MRP from quaternion (scalar last)"""
+    return q[1:3]/(1+q[4])
+end
+
+function q_from_p(p::Vec)::Vec
+    """Quaternion (scalar last) from MRP"""
+    return (1/(1+dot(p,p)))*[2*p;(1-dot(p,p))]
+end
+
+function dcm_from_p(p::Vec)::Mat
+    """DCM from MRP"""
+    sp = skew_from_vec(p)
+    return I + (8*sp^2 + 4*(1 - dot(p,p))*sp)/(1 + dot(p,p))^2
+end
+
+function pdot_from_w(p::Vec,w::Vec)::Vec
+    """kinematics of the modified rodrigues parameter assuming that
+    attitude is being denoted as N_R_B using the kane/levinson convention
+
+    Arguments:
+        p: ᴺpᴮ, MRP, Kane/Levinson convention
+        w: ᴺωᴮ expressed in B
+
+    Returns:
+        ᴺṗᴮ
+    """
+
+    return ((1+norm(p)^2)/4) *(   eye(3) + 2*(hat(p)^2 + hat(p))/(1+norm(p)^2)   )*w
+
+end
+
+function p_from_phi(phi::Vec)::Vec
+    """rodrigues parameter from axis angle"""
+    q = q_from_phi(phi)
+    p = p_from_q(q)
+
+    return p
+end
+
+function phi_from_p(p::Vec)::Vec
+    """axis angle from rodrigues parameter"""
+    q = q_from_p(p)
+    phi = phi_from_q(q)
+
+    return phi
+end
+
+# function interp1(t,B_save::VecofVecs,input_t::Number)
+#     #TODO: test this
+#
+#     # sample rate of B_save vec
+#     Δt = t[2]-t[1]
+#
+#     # get the lower and upper bounds
+#     lower_idx = Int(floor(input_t/Δt))
+#     # upper_idx = Int(ceil(input_t+1e-10/Δt))
+#
+#     # how far are we between the bounds ∈[0,1]
+#     δt = ((input_t) - Δt*lower_idx)/Δt
+#
+#     # lower and upper function values
+#     f_lower = B_save[lower_idx+1]
+#     f_upper = B_save[lower_idx+2]
+#
+#         return (f_lower + δt*(f_upper - f_lower))
+# end
+
+# function interp1(t,B_save::Mat,input_t::Number)
+#     #TODO: test this
+#
+#     # sample rate of B_save vec
+#     Δt = t[2]-t[1]
+#
+#     # get the lower and upper bounds
+#     lower_idx = Int(floor(input_t/Δt))
+#     # upper_idx = Int(ceil(input_t+1e-10/Δt))
+#
+#     # how far are we between the bounds ∈[0,1]
+#     δt = ((input_t) - Δt*lower_idx)/Δt
+#
+#     # lower and upper function values
+#     println("yes")
+#     @infiltrate
+#     # error()
+#     f_lower = B_save[:,lower_idx+1]
+#     f_upper = B_save[:,lower_idx+2]
+#
+#         return (f_lower + δt*(f_upper - f_lower))
+# end
+
+function interp1(t,B_save,input_t::Number)
+    #TODO: test this
+
+    # sample rate of B_save vec
+    Δt = t[2]-t[1]
+
+    # get the lower and upper bounds
+    lower_idx = Int(floor(input_t/Δt))
+    # upper_idx = Int(ceil(input_t+1e-10/Δt))
+
+    # how far are we between the bounds ∈[0,1]
+    δt = ((input_t) - Δt*lower_idx)/Δt
+
+    # lower and upper function values
+    # @infiltrate
+    # error()
+
+    # @infiltrate
+    # error()
+
+    # @show lower_idx +2
+    # @show length(B_save)
+    # @show (lower_idx+2)>length(B_save)
+
+    if (lower_idx+2)>length(B_save)
+        return B_save[end]
+    else
+
+        f_lower = B_save[lower_idx+1]
+        f_upper = B_save[lower_idx+2]
+
+        return (f_lower + δt*(f_upper - f_lower))
+    end
+
+
+end
+
+function vec_from_mat(mat::Matrix)
+    #vector of vectors from matrix of column vectors
+
+    s = size(mat)
+    if length(s) == 3
+        a,b,c = size(mat)
+
+        V = fill(zeros(a,b),c)
+
+        for i = 1:c
+            V[i] = mat[:,:,i]
+        end
+    else
+        a,b = size(mat)
+
+        V = fill(zeros(a),b)
+
+        for i = 1:b
+            V[i] = mat[:,i]
+        end
+    end
+
+
+    return V
+end
+
+function mat_from_vec(a::Union{Array{Array{Float64,1},1},Array{Array{Float32,1},1}})
+    "Turn a vector of vectors into a matrix"
+
+
+    rows = length(a[1])
+    columns = length(a)
+    A = zeros(rows,columns)
+
+    for i = 1:columns
+        A[:,i] = a[i]
+    end
+
+    return A
+end
+
+
+function clamp3d(max_moments::Vec,m::Vec)
+    #3d vector clamp function
+
+    if minimum(max_moments)<0
+        error("max moments has negative in it")
+    end
+
+    m_out = zeros(3)
+
+    for i = 1:3
+        m_out[i] = clamp(m[i],-max_moments[i],max_moments[i])
+    end
+
+    return m_out
+end
+function hasnan(mat)
+    #check if matrix has NaN present
+
+    if norm(isnan.(vec(mat)))>0.0
+        return true
+    else
+        return false
+    end
+end
+
+function phi_shorter(phi)
+    #axis angle for angles less than ±π
+    θ = norm(phi)
+    r = phi/θ
+
+    return r*wrap_to_pm_pi(θ)
 end

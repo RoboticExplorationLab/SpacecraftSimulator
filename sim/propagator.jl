@@ -1,12 +1,15 @@
-using LinearAlgebra, SatelliteDynamics, SatelliteToolbox, Plots
+ss_sim_path =  dirname(dirname(@__FILE__))
 
+cd(joinpath(ss_sim_path,"virtual_env"))
+Pkg.activate(".")
+
+
+using LinearAlgebra, SatelliteDynamics, MATLAB, ProgressMeter
 using Infiltrator
-using StaticArrays
-using CSV
-using DataFrames
-using ProgressMeter
+
+# keep namespaces consistent
 const SD = SatelliteDynamics
-const ST = SatelliteToolbox
+
 
 
 # load in the julia and python functions
@@ -20,128 +23,171 @@ function sim_driver(path_to_yaml)
 
     Args:
         path_to_yaml: path from SpacecraftSimulation directory to the yaml
+
+    Returns:
+        sim_output: named tuple
     """
 
-    # load in config from the given path
-    params,initial_conditions, time_params = config(path_to_yaml)
-    global params
+    # load in the sim config yaml from the given path
+    initial_conditions, time_params = config(path_to_yaml)
 
-    # timing stuff
-    epc_orbital = initial_conditions.epc_orbital
-    dt_orbital = time_params.dt_orbital
-    dt_attitude = time_params.dt_attitude
-    dt_controller = time_params.dt_controller
+    # pre-allocate structs/arrays for storage
+    truth = initialize_struct(truth_state_struct,time_params,initial_conditions)
+    sensors = initialize_sensors_struct(time_params)
+    MEKF = initialize_mekf_struct(time_params)
 
-    # this takes care of the sample ratio
-    # controller_sample_ratio = Int(dt_controller/dt_attitude)
+    # MEKF
+    initialize_mekf!(MEKF,truth)
 
-    # time vector stuff
-    tf = time_params.tf
-    t_vec_orbital = time_params.t_vec_orbital
-    inner_loop_t_vec = time_params.inner_loop_t_vec
-    t_vec_attitude = time_params.t_vec_attitude
-
-    # pre-allocate arrays for storage
-    orbital_state = zeros(6,length(t_vec_orbital))
-    attitude_state = zeros(7,length(t_vec_attitude))
-    B_eci = zeros(3,length(t_vec_orbital)-1)
-    eclipse_hist = zeros(length(t_vec_orbital))
-
-    B_body_sense_vec = zeros(3,length(t_vec_attitude))
-    s_body_sense_vec = zeros(3,length(t_vec_attitude))
-    attitude_state_sense = zeros(7,length(t_vec_attitude))
-
-    # pre-allocate sensor stuff
-
-
-    # @infiltrate
-    # error()
-    # initial conditions
-    orbital_state[:,1] = initial_conditions.eci_rv_0
-    attitude_state[:,1] = [initial_conditions.ᴺqᴮ0;
-                           initial_conditions.ω0]
+    # triad
+    q_triad = fill(zeros(4),length(time_params.t_vec_attitude))
 
     # main loop
     t1 = time()
-    @showprogress "Simulating..." for kk = 1:(length(t_vec_orbital)-1)
+    @showprogress "Simulating..." for orb_ind = 1:(length(time_params.t_vec_orbital)-1)
 
-        # sun position and eclipse check
-        r_sun_eci = SD.sun_position(epc_orbital)
-        eclipse = eclipse_check(orbital_state[1:3,kk], r_sun_eci)
-        eclipse_hist[kk] = eclipse
+        # use orbital state to populate the truth struct
+        orbital_truth_struct_update!(truth,orb_ind)
 
-        # atmospheric drag
-        # ρ = density_harris_priester(orbital_state[1:3,kk], r_sun_eci)
-        # ecef_Q_eci = SD.rECItoECEF(epc_orbital)
-        # a_drag = accel_drag(orbital_state[:,kk], ρ, params.sc.mass,
-        #                     params.sc.area, params.sc.cd, ecef_Q_eci)
-        a_drag = zeros(3)
+        # #----------------------ATTITUDE LOOP------------------------------
+        # attitude dynamics inner loop
+        for att_ind = 1:length(time_params.inner_loop_t_vec)-1
 
-        # mag field vector
-        B_eci[:,kk] = IGRF13(orbital_state[1:3,kk],epc_orbital)
+            # index of current step n
+            index_n = (orb_ind-1)*(length(time_params.inner_loop_t_vec)-1) + att_ind
 
-        # thruster acceleration
+            # update the derived state
+            attitude_truth_struct_update!(truth,orb_ind,index_n)
+
+            # generate measurements
+            sensors_update!(sensors, truth,orb_ind,index_n)
+
+            # disturbance torques
+            τ = zeros(3)
+
+            # --------------------MEKF--------------------------------
+
+
+            if index_n>1
+                # mekf!(MEKF,τ,sensors,orb_ind,index_n)
+                yt = [sensors.ω[index_n];
+                      sensors.sun_body[index_n];
+                      sensors.B_body[index_n]]
+
+                MEKF.mu[index_n], MEKF.Sigma[index_n] = mekf(MEKF.mu[index_n-1],
+                    MEKF.Sigma[index_n-1],τ,normalize(sensors.sun_eci[orb_ind]),
+                    normalize(sensors.B_eci[orb_ind]),yt,MEKF.Q,MEKF.R,
+                    params.time_params.dt_attitude,sensors.J,sensors.invJ)
+            end
+            update_mekf_struct!(MEKF,index_n)
+
+            # -------------------TRIAD--------------------------------
+            q_triad[index_n] = triad_equal_error(sensors.sun_eci[orb_ind],sensors.B_eci[orb_ind],
+                                                 sensors.sun_body[index_n],sensors.B_body[index_n])
+            # ------------------ control law -------------------------
+            sc_mag_moment = zeros(3)
+
+            # -------------------integration--------------------------
+            truth.ᴺqᴮ[index_n+1], truth.ω[index_n+1], truth.β[index_n+1] =rk4_attitude(spacecraft_eom,
+            truth.epc_orbital, [truth.ᴺqᴮ[index_n];truth.ω[index_n]],
+            truth.β[index_n],sc_mag_moment, truth.B_eci[orb_ind], τ,
+            time_params.dt_attitude)
+
+
+        end
+        # --------------------------- end attitude loop -----------------------
+
         u_thruster = zeros(3)
 
-
-        # attitude dynamics inner loop
-        attitude_loop!(orbital_state,attitude_state,kk,B_eci,r_sun_eci,
-                                eclipse,inner_loop_t_vec,attitude_state_sense,
-                                B_body_sense_vec,s_body_sense_vec,epc_orbital,
-                                dt_attitude)
-
         # propagate orbit one step
-        orbital_state[:,kk+1] =rk4_orbital(FODE, epc_orbital, orbital_state[:,kk],
-                                      u_thruster + a_drag, dt_orbital)
-
-        # increment the time
-        epc_orbital += dt_orbital
+        truth.r_eci[orb_ind+1], truth.v_eci[orb_ind+1], truth.epc_orbital = rk4_orbital(FODE, truth.epc_orbital, [truth.r_eci[orb_ind]; truth.v_eci[orb_ind]],
+                                      u_thruster, time_params.dt_orbital)
 
 
     end
 
-    @show time() - t1
+    # derive quantities for the last step
+    index_n = length(time_params.t_vec_attitude)
+    orb_ind = length(time_params.t_vec_orbital)
+    orbital_truth_struct_update!(truth,length(time_params.t_vec_orbital))
+    attitude_truth_struct_update!(truth,length(time_params.t_vec_orbital),
+                                  length(time_params.t_vec_attitude))
+    sensors_update!(sensors, truth,length(time_params.t_vec_orbital),
+                                  length(time_params.t_vec_attitude))
+    # yt = [sensors.ω[index_n];sensors.sun_body[index_n];sensors.B_body[index_n]]
+    # MEKF.mu[index_n], MEKF.Sigma[index_n] = mekf(MEKF.mu[index_n-1],
+    #         MEKF.Sigma[index_n-1],τ,normalize(sensors.sun_eci[orb_ind]),
+    #         normalize(sensors.B_eci[orb_ind]),yt,MEKF.Q,MEKF.R,
+    #         params.time_params.dt_attitude,sensors.J,sensors.invJ)
 
+    return sim_output = (truth=truth, t_vec_orbital = time_params.t_vec_orbital,
+                         t_vec_attitude = time_params.t_vec_attitude, sensors,
+                         MEKF = MEKF, q_triad)
 
-
-
-
-    ## plotting stuff
-    # @infiltrate
-
-    # plot(vec(orbital_state[1,:]),vec(orbital_state[2,:]),vec(orbital_state[3,:]))
-    #
-    B_eci *=1e9
-    # plot(vec(B_eci[1,:]))
-    # plot!(vec(B_eci[2,:]))
-    # plot!(vec(B_eci[3,:]))
-    #
-    # # @infiltrate
-    t_vec_attitude = t_vec_attitude ./60
-    t_vec_orbital = t_vec_orbital ./60
-    plot(t_vec_attitude,rad2deg.(vec(attitude_state[5,:])),title = "Bdot Detumble",label = "ωₓ")
-    plot!(t_vec_attitude,rad2deg.(vec(attitude_state[6,:])))
-    plot!(t_vec_attitude,rad2deg.(vec(attitude_state[7,:])),xticks = 0:10:200,xlabel = "Time (minutes)",ylabel = "Angular Velocity (deg/s)")
-
-
-    omega_norm = zeros(length(t_vec_attitude))
-    for i = 1:length(t_vec_attitude)
-        omega_norm[i] = rad2deg(norm(vec(attitude_state[5:7,i])))
-    end
-
-    plot(t_vec_attitude,omega_norm,xlabel = "Time (minutes)",ylabel = "Angular Velocity (deg/s)",title = "Bdot Detumble")
-
-    plot!(t_vec_orbital,100*eclipse_hist,label = "Eclipse")
-
-    display(plot(vec(B_eci[1,:])))
-    display(plot!(vec(B_eci[2,:])))
-    display(plot!(vec(B_eci[3,:])))
-
-    return sim_output = (B_eci = B_eci, orbital_state= orbital_state, t_vec_orbital = t_vec_orbital)
 end
 
-# path_to_yaml = "sim/config.yml"
+# path_to_yaml = "sim/config_attitude_test0.yml"
 # sim_output = sim_driver(path_to_yaml)
-# B_eci = sim_output.B_eci
+#
+# q = mat_from_vec(sim_output.truth.ᴺqᴮ)
+# ω = mat_from_vec(sim_output.truth.ω)
+#
+# q_triad = mat_from_vec(sim_output.q_triad)
+#
+# β = mat_from_vec(sim_output.truth.β)
+# β_ekf = mat_from_vec(sim_output.MEKF.β)
+# mu = mat_from_vec(sim_output.MEKF.mu)
+# mu_w = mu[5:7,:]
+# gyro = mat_from_vec(sim_output.sensors.ω)
+#
+#
+# N = size(mu_w,2)
+# mekf_point_error = zeros(N)
+# triad_point_error = zeros(N)
+# for i = 1:N
+#     mekf_point_error[i] = q_angle_error(sim_output.truth.ᴺqᴮ[i],mu[1:4,i])
+#     triad_point_error[i] = q_angle_error(sim_output.truth.ᴺqᴮ[i],q_triad[:,i])
+# end
+#
+# mat"
+# figure
+# hold on
+# plot($sim_output.t_vec_attitude,$β_ekf')
+# plot($sim_output.t_vec_attitude,$β')
+# "
+#
+# mat"
+# figure
+# hold on
+# plot($sim_output.t_vec_attitude, rad2deg($triad_point_error),'.')
+# plot($sim_output.t_vec_attitude, rad2deg($mekf_point_error))
+# hold off
+# "
 
-# CSV.write("FileName.csv",  DataFrame(B_eci'), header=false)
+# mat"
+# figure
+# hold on
+# plot($sim_output.t_vec_attitude,$q')
+# plot($sim_output.t_vec_attitude,$q_triad')
+# %plot($sim_output.t_vec_attitude,$mu(1:4,:)')
+# "
+#
+#
+# mat"
+# figure
+# hold on
+# plot($sim_output.t_vec_attitude, $mekf_point_error)
+# hold off
+# "
+# mat"
+# figure
+# hold on
+# plot($sim_output.t_vec_attitude,$ω')
+# plot($sim_output.t_vec_attitude,$gyro')
+# "
+# mat"
+# figure
+# hold on
+# plot($sim_output.t_vec_attitude,$ω')
+# plot($sim_output.t_vec_attitude,$mu_w')
+# "
