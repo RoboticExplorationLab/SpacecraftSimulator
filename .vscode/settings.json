@@ -1,3 +1,4 @@
 {
-    "python.pythonPath": "/opt/anaconda3/bin/python"
+    "python.pythonPath": "/Users/kevintracy/devel/SpacecraftSimulator/python_files/python_stuff/env/bin/python",
+    "python.formatting.provider": "yapf"
 }

@@ -24,7 +24,8 @@ line2 = ss[id+97:id+97+68]
 # SONATE NORAD = 44400
 # line1 = "1 44400U 19038Q   20267.59883466  .00000414  00000-0  27750-4 0  9993"
 # line2 = "2 44400  97.5499 227.6445 0025856 145.1208 215.1722 15.12040781 67400"
-# line1 =
+line1 = "1 44400U 19038Q   20311.60590416  .00001180  00000-0  71834-4 0  9998"
+line2 = "2 44400  97.5565 271.1792 0025309   0.8441 359.2825 15.12118200 74057"
 
 TLEs = read_tle_from_string(line1, line2)
 
@@ -47,3 +48,14 @@ date_tuple = SD.jd_to_caldate(jd_epoch )
 @show jd_epoch
 
 # T = Epoch()
+
+ERA = iauEra00(jd_epoch-1.0,1.0)
+ECEF_Q_ECI = iauRz(ERA,Matrix{Float64}(I, 3, 3))
+
+r_eci = r_tle
+v_eci = v_tle
+
+ω = [0;0;OMEGA_EARTH]
+
+r_ecef = ECEF_Q_ECI*r_eci
+v_ecef = ECEF_Q_ECI*v_eci  - ω × r_ecef

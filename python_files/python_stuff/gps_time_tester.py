@@ -76,7 +76,7 @@ def gps_from_mjd(MJD_current):
 
 
 def test_gps_time():
-    """Four tests run from http://leapsecond.com/java/gpsclock.htm"""
+    """Five tests run from http://leapsecond.com/java/gpsclock.htm"""
 
     # -------------- test 1 -----------------
     # weeks from midnight january 6th 1980
@@ -149,5 +149,25 @@ def test_gps_time():
     np.testing.assert_equal(GNSS_week, GNSS_week2)
     np.testing.assert_equal(TOW, TOW2)
 
+    # -------------- test 5 -----------------
+
+    # weeks from midnight january 6th 1980
+    GNSS_week = 2132
+
+    # seconds since the week started
+    TOW = 51638600
+
+    # given MJD
+    MJD = 59173.97648
+
+    mjd_current = mjd_from_gps(GNSS_week, TOW)
+    np.testing.assert_approx_equal(mjd_current, MJD, 8)
+    GNSS_week2, TOW2 = gps_from_mjd(mjd_current)
+
+    np.testing.assert_equal(GNSS_week, GNSS_week2)
+    np.testing.assert_equal(TOW, TOW2)
+
 
 test_gps_time()
+
+print("yes")
