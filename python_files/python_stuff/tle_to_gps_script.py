@@ -154,8 +154,11 @@ jd_current_p1, jd_current_p2 = pysofa2.Dtf2d(
 )
 
 # use sgp4 to get the current r_eci and v_eci (units of km and km/s)
+sgp4_t1 = time.time()
 e, r_eci, v_eci = satellite.sgp4(jd_current_p1, jd_current_p2)
+print("time of propagation:", time.time() - sgp4_t1)
 
+print("---------------Propagator Data---------------")
 print("r_eci (km):", r_eci)
 print("v_eci (km/s):", v_eci)
 
@@ -163,6 +166,7 @@ print("v_eci (km/s):", v_eci)
 ERA = pysofa2.Era00(jd_current_p1, jd_current_p2)
 print("earth rotation angle (radians)", ERA)
 
+print("------------------GPS DATA-------------------")
 # get ecef position and velocity
 r_ecef, v_ecef = rvecef_from_eci(r_eci, v_eci, ERA)
 
