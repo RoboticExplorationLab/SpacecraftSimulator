@@ -171,7 +171,7 @@ print("v_ecef (km/s):", v_ecef)
 
 # get GPS readings (same as raw sensor)
 MJD_ZERO = 2.4000005e6
-MJD_current = jd_current_p1 + jd_current_p2 - MJD_ZERO
+MJD_current = (jd_current_p1 + jd_current_p2) - MJD_ZERO
 GNSS_week, TOW = gps_from_mjd(MJD_current)
 
 print("GNSS Week (weeks):", GNSS_week)
