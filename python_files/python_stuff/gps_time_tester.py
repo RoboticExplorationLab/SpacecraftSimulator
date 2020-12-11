@@ -40,8 +40,6 @@ def gps_from_mjd(MJD_current):
 
     Args:
         MJD_current: MJD as described by the GPS time
-        GNSS_week: Weeks since 0h January 6th, 1980 (uint16, units: weeks)
-        TOW: Seconds into the week (uint16, units: 1/100 seconds)
 
     Returns:
         GNSS_week: Weeks since 0h January 6th, 1980 (uint16, units: weeks)

@@ -1,4 +1,3 @@
-# import brahe
 from sgp4.api import Satrec
 import time
 import pysofa2
@@ -97,33 +96,48 @@ def rveci_from_ecef(r_ecef, v_ecef, era):
     return r_eci, v_eci
 
 
-# TLE's
-line1 = "1 44400U 19038Q   20311.60590416  .00001180  00000-0  71834-4 0  9998"
-line2 = "2 44400  97.5565 271.1792 0025309   0.8441 359.2825 15.12118200 74057"
+def gps_from_mjd(MJD_current):
+    """Returns GPS time from MJD.
+
+    Args:
+        MJD_current: MJD as described by the GPS time
+
+    Returns:
+        GNSS_week: Weeks since 0h January 6th, 1980 (uint16, units: weeks)
+        TOW: Seconds into the week (uint16, units: 1/100 seconds)
+
+    Comments:
+        Both of the outputs to this function are the raw GPS time parameters.
+        The TOW term is scaled by 0.01 on the way out of the function.
+
+        This can be tested with <http://leapsecond.com/java/gpsclock.htm>
+    """
+
+    # MJD when GPS time started
+    MJD_gps_epoch = 44244
+
+    # julian days since this epoch
+    GNSS_days = MJD_current - MJD_gps_epoch
+
+    # number of weeks since this epoch
+    GNSS_week_float = GNSS_days / 7
+
+    # convert this week to the floor int
+    GNSS_week = int(np.floor(GNSS_week_float))
+
+    # convert the excess to seconds, and add 18 seconds for current UTC offset
+    TOW = (GNSS_week_float % 1) * 7 * 86400 + 18
+
+    # convert to the scaling (0.01s) that GPS uses
+    TOW = round(TOW * 100)
+
+    return GNSS_week, TOW
+
+
+# TLE's (Sonate from <https://www.celestrak.com/NORAD/elements/cubesat.txt>)
+line1 = "1 44400U 19038Q   20345.94933858  .00001475  00000-0  88741-4 0  9995"
+line2 = "2 44400  97.5639 305.1881 0023394 237.5108 122.3864 15.12211443 79248"
 satellite = Satrec.twoline2rv(line1, line2)
-
-# get JD from TLE
-jd_p1, jd_p2 = jd_from_tle(line1)
-
-# full jd at time of TLE epoch
-jd_tle = jd_p1 + jd_p2
-
-print("jd at epoch", jd_tle)
-# start sgp4 to get r and v
-e, r_eci, v_eci = satellite.sgp4(jd_p1, jd_p2)
-
-print("r_eci:", r_eci)
-print("v_eci:", v_eci)
-
-# get earth rotation angle from C SOFA library
-ERA = pysofa2.Era00(jd_p1, jd_p2)
-print("earth rotation angle", ERA)
-
-# ecef
-r_ecef, v_ecef = rvecef_from_eci(r_eci, v_eci, ERA)
-
-print("r_ecef:", r_ecef)
-print("v_ecef:", v_ecef)
 
 # get current time
 current_time = time.gmtime()
@@ -139,37 +153,26 @@ jd_current_p1, jd_current_p2 = pysofa2.Dtf2d(
     current_time.tm_sec,
 )
 
-# calculate time since TLE epoch using julian day = 86400 seconds
-seconds_since_epoch = 86400 * (jd_current_p1 + jd_current_p2 - jd_tle)
+# use sgp4 to get the current r_eci and v_eci (units of km and km/s)
+e, r_eci, v_eci = satellite.sgp4(jd_current_p1, jd_current_p2)
 
-print("Seconds since TLE epoch", seconds_since_epoch)
+print("r_eci (km):", r_eci)
+print("v_eci (km/s):", v_eci)
 
-# pdb.set_trace()
+# get earth rotation angle from C SOFA library
+ERA = pysofa2.Era00(jd_current_p1, jd_current_p2)
+print("earth rotation angle (radians)", ERA)
 
-# # -- testing --
-# R_EARTH = 6371
-# ERA = 0  # random
-# r_ecef = np.array([1e6, 0, 0])
-# v_ecef = np.array([0, 0, 0])
-# r_eci, v_eci = rveci_from_ecef(r_ecef, v_ecef, ERA)
-# r_ecef2, v_ecef2 = rvecef_from_eci(r_eci, v_eci, ERA)
-# print(r_ecef - r_ecef2)
-# print(v_ecef - v_ecef2)
+# get ecef position and velocity
+r_ecef, v_ecef = rvecef_from_eci(r_eci, v_eci, ERA)
 
-# R_EARTH = 6371
-# ERA = 3.45  # random
-# r_ecef = np.array([1e6, 2e6, 7.4e6])
-# v_ecef = np.array([4, 3, 2.1])
-# r_eci, v_eci = rveci_from_ecef(r_ecef, v_ecef, ERA)
-# r_ecef2, v_ecef2 = rvecef_from_eci(r_eci, v_eci, ERA)
-# print(r_ecef - r_ecef2)
-# print(v_ecef - v_ecef2)
+print("r_ecef (km):", r_ecef)
+print("v_ecef (km/s):", v_ecef)
 
-# R_EARTH = 6371
-# ERA = 4.87  # random
-# r_ecef = np.array([5e6, 7e6, -3e7])
-# v_ecef = np.array([3, 4, -5.9])
-# r_eci, v_eci = rveci_from_ecef(r_ecef, v_ecef, ERA)
-# r_ecef2, v_ecef2 = rvecef_from_eci(r_eci, v_eci, ERA)
-# print(r_ecef - r_ecef2)
-# print(v_ecef - v_ecef2)
+# get GPS readings (same as raw sensor)
+MJD_ZERO = 2.4000005e6
+MJD_current = jd_current_p1 + jd_current_p2 - MJD_ZERO
+GNSS_week, TOW = gps_from_mjd(MJD_current)
+
+print("GNSS Week (weeks):", GNSS_week)
+print("TOW (0.01 seconds):", TOW)
