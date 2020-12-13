@@ -66,36 +66,6 @@ def rvecef_from_eci(r_eci, v_eci, era):
     return r_ecef, v_ecef
 
 
-def rveci_from_ecef(r_ecef, v_ecef, era):
-    """Get rv in eci from ecef and earth rotation angle.
-    Args:
-        r_ecef: position in ecef (km)
-        v_ecef: velocity in ecef wrt ecef (km/s)
-        era: earth rotation angle (radians)
-    Returns:
-        r_eci: position in eci (km)
-        v_eci: velocity in eci wrt eci (km/s)
-    """
-
-    sin_theta = math.sin(era)
-    cos_theta = math.cos(era)
-
-    r_eci = np.array([
-        cos_theta * r_ecef[0] - sin_theta * r_ecef[1],
-        sin_theta * r_ecef[0] + cos_theta * r_ecef[1],
-        r_ecef[2],
-    ])
-
-    omega_earth = 7.292115146706979e-5
-    v_eci = np.array([
-        cos_theta * v_ecef[0] - sin_theta * v_ecef[1] - omega_earth * r_eci[1],
-        sin_theta * v_ecef[0] + cos_theta * v_ecef[1] + omega_earth * r_eci[0],
-        v_ecef[2],
-    ])
-
-    return r_eci, v_eci
-
-
 def gps_from_mjd(MJD_current):
     """Returns GPS time from MJD.
 
@@ -156,7 +126,7 @@ jd_current_p1, jd_current_p2 = pysofa2.Dtf2d(
 # use sgp4 to get the current r_eci and v_eci (units of km and km/s)
 sgp4_t1 = time.time()
 e, r_eci, v_eci = satellite.sgp4(jd_current_p1, jd_current_p2)
-print("time of propagation:", time.time() - sgp4_t1)
+print("time for propagation:", time.time() - sgp4_t1)
 
 print("---------------Propagator Data---------------")
 print("r_eci (km):", r_eci)
@@ -169,6 +139,9 @@ print("earth rotation angle (radians)", ERA)
 print("------------------GPS DATA-------------------")
 # get ecef position and velocity
 r_ecef, v_ecef = rvecef_from_eci(r_eci, v_eci, ERA)
+
+print("r_ecef (km):", r_ecef)
+print("v_ecef (km/s):", v_ecef)
 
 print("r_ecef (km):", r_ecef)
 print("v_ecef (km/s):", v_ecef)
