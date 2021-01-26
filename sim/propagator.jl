@@ -68,24 +68,28 @@ function sim_driver(path_to_yaml)
             # --------------------MEKF--------------------------------
 
 
-            if index_n>1
-                # mekf!(MEKF,τ,sensors,orb_ind,index_n)
-                yt = [sensors.ω[index_n];
-                      sensors.sun_body[index_n];
-                      sensors.B_body[index_n]]
-
-                MEKF.mu[index_n], MEKF.Sigma[index_n] = mekf(MEKF.mu[index_n-1],
-                    MEKF.Sigma[index_n-1],τ,normalize(sensors.sun_eci[orb_ind]),
-                    normalize(sensors.B_eci[orb_ind]),yt,MEKF.Q,MEKF.R,
-                    params.time_params.dt_attitude,sensors.J,sensors.invJ)
-            end
-            update_mekf_struct!(MEKF,index_n)
+            # if index_n>1
+            #     # mekf!(MEKF,τ,sensors,orb_ind,index_n)
+            #     yt = [sensors.ω[index_n];
+            #           sensors.sun_body[index_n];
+            #           sensors.B_body[index_n]]
+            #
+            #     MEKF.mu[index_n], MEKF.Sigma[index_n] = mekf(MEKF.mu[index_n-1],
+            #         MEKF.Sigma[index_n-1],τ,normalize(sensors.sun_eci[orb_ind]),
+            #         normalize(sensors.B_eci[orb_ind]),yt,MEKF.Q,MEKF.R,
+            #         params.time_params.dt_attitude,sensors.J,sensors.invJ)
+            # end
+            # update_mekf_struct!(MEKF,index_n)
 
             # -------------------TRIAD--------------------------------
             q_triad[index_n] = triad_equal_error(sensors.sun_eci[orb_ind],sensors.B_eci[orb_ind],
                                                  sensors.sun_body[index_n],sensors.B_body[index_n])
             # ------------------ control law -------------------------
-            sc_mag_moment = zeros(3)
+            # sc_mag_moment = zeros(3)
+            clamped_ω = clamp3d(deg2rad(30)*ones(3),sensors.ω[index_n])
+            sc_mag_moment =bdot_control_law(clamped_ω,params.sc.max_dipoles,sensors.B_body[index_n],false)
+            # sc_mag_moment =bdot_control_law(sensors.ω[index_n],params.sc.max_dipoles,sensors.B_body[index_n],false)
+            # sc_mag_moment =bdot_control_law(truth.ω[index_n],params.sc.max_dipoles,truth.B_body[index_n],false)
 
             # -------------------integration--------------------------
             truth.ᴺqᴮ[index_n+1], truth.ω[index_n+1], truth.β[index_n+1] =rk4_attitude(spacecraft_eom,
@@ -126,11 +130,41 @@ function sim_driver(path_to_yaml)
 
 end
 
-# path_to_yaml = "sim/config_attitude_test0.yml"
-# sim_output = sim_driver(path_to_yaml)
+path_to_yaml = "sim/config_attitude_test_bdot.yml"
+sim_output = sim_driver(path_to_yaml)
 #
 # q = mat_from_vec(sim_output.truth.ᴺqᴮ)
-# ω = mat_from_vec(sim_output.truth.ω)
+ω = mat_from_vec(sim_output.truth.ω)
+
+ωnorm = rad2deg.([norm(sim_output.truth.ω[i]) for i = 1:length(sim_output.truth.ω)])
+
+tva = sim_output.t_vec_attitude
+# mat"
+# figure
+# hold on
+# plot($tva/60,$ωnorm)
+# title('Tanh B-Dot (Perfect Sensors)')
+# xlabel('Time (minutes)')
+# ylabel('Angular Velocity Magnitude (deg/s)')
+# hold off
+# saveas(gcf,'clean_bdot.png')
+# "
+mat"
+figure
+hold on
+plot($tva/60,$ωnorm)
+title('Tanh B-Dot (Noisy Sensors)')
+xlabel('Time (minutes)')
+ylabel('Angular Velocity Magnitude (deg/s)')
+hold off
+saveas(gcf,'noisy_bdot.png')
+"
+mat"
+figure
+hold on
+plot($ω')
+hold off
+"
 #
 # q_triad = mat_from_vec(sim_output.q_triad)
 #

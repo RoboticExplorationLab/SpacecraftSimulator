@@ -4,6 +4,7 @@ import pysofa2
 import pdb
 import math
 import numpy as np
+import string
 
 
 def jd_from_tle(line1):
@@ -107,6 +108,33 @@ def gps_from_mjd(MJD_current):
 # TLE's (Sonate from <https://www.celestrak.com/NORAD/elements/cubesat.txt>)
 line1 = "1 44400U 19038Q   20345.94933858  .00001475  00000-0  88741-4 0  9995"
 line2 = "2 44400  97.5639 305.1881 0023394 237.5108 122.3864 15.12211443 79248"
+
+# line1 = "1 99789U          21022.64108674  .00000009  00000-0  59233-6 0 00008"
+# line2 = "2 99789 097.4984 077.3576 0009198 294.5224 091.6031 15.08170883000346"
+
+
+def checksum(line):
+    # L = string.strip(line)
+    L = line1
+    cksum = 0
+    for i in range(68):
+        c = L[i]
+        if c == ' ' or c == '.' or c == '+' or c in string.ascii_letters:
+            continue
+        elif c == '-':
+            cksum = cksum + 1
+        else:
+            cksum = cksum + int(c)
+
+    cksum %= 10
+
+    return cksum
+
+
+checksum(line1)
+pdb.set_trace()
+
+# let me test with my own stuff
 satellite = Satrec.twoline2rv(line1, line2)
 
 # get current time
@@ -123,6 +151,8 @@ jd_current_p1, jd_current_p2 = pysofa2.Dtf2d(
     current_time.tm_sec,
 )
 
+jd_current_p1 = 2.459237141086736e6
+jd_current_p2 = 0.0
 # use sgp4 to get the current r_eci and v_eci (units of km and km/s)
 sgp4_t1 = time.time()
 e, r_eci, v_eci = satellite.sgp4(jd_current_p1, jd_current_p2)
@@ -139,9 +169,6 @@ print("earth rotation angle (radians)", ERA)
 print("------------------GPS DATA-------------------")
 # get ecef position and velocity
 r_ecef, v_ecef = rvecef_from_eci(r_eci, v_eci, ERA)
-
-print("r_ecef (km):", r_ecef)
-print("v_ecef (km/s):", v_ecef)
 
 print("r_ecef (km):", r_ecef)
 print("v_ecef (km/s):", v_ecef)
