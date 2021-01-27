@@ -1,0 +1,7 @@
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+FiniteDiff = "6a86dc24-6348-571c-b903-95158fe2bd41"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+MATLAB = "10e44e05-a98a-55b3-a45b-ba969058deb6"
+SatelliteDynamics = "0e7c1a32-1b9f-5532-88a4-e668712d6a4c"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
