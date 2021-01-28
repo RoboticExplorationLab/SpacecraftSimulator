@@ -1,6 +1,6 @@
 using SatelliteDynamics, ForwardDiff, MATLAB, LinearAlgebra
 using StaticArrays
-
+using Attitude
 
 # Declare simulation initial Epoch
 epc0 = Epoch(2019, 1, 1, 12, 0, 0, 0.0)
@@ -84,7 +84,14 @@ function residual(v)
     end
     return (x[1:3]-r2)
 end
-
+function residual_trajectory(v)
+    X = [@SVector zeros(6) for i = 1:N ]
+    X[1] = SVector{6}([r1;v])
+    for i = 1:(N-1)
+        X[i+1] = rk4_orbital(dynamics,0,X[i],0,dt)
+    end
+    return X
+end
 v1 = eci0[4:6]
 
 # @btime residual(v1)
@@ -94,18 +101,21 @@ v1 = eci0[4:6]
 function GN(v0)
 
 # v0 = v1 + 100*randn(3)
-
+traj_basket = []
 new_S = 1e15
 for i = 1:5
 
     res = residual(v0)
+    if i == 1
+        push!(traj_basket,residual_trajectory(v0))
+    end
     S = dot(res,res)
     # @show S
 
     J = FiniteDiff.finite_difference_jacobian(residual,v0)
     newton_step = -J\res
     α = 1.0
-    for i = 1:10
+    for ii = 1:10
         new_v = v0 + α*newton_step
         new_res = residual(new_v)
         new_S = dot(new_res,new_res)
@@ -118,13 +128,14 @@ for i = 1:5
     end
     res = residual(v0)
     S = dot(res,res)
+    push!(traj_basket,residual_trajectory(v0))
     @show S
     if norm(newton_step)<0.1
         break
     end
 
 end
-
+    return traj_basket
 end
 # v0 = v1 + 100*randn(3)
 h = normalize(cross(r1,r2))
@@ -132,8 +143,28 @@ vcirc = sqrt(GM_EARTH/norm(r1))
 v0 = normalize(cross(h,r1))*vcirc
 
 true_v = eci_hist[4:6,2000]
-GN(v0)
+traj = GN(v0 + 1000*randn(3))
 
+x_vec = [mat_from_vec(traj[i]) for i = 1:length(traj)]
+
+
+mat"
+[x,y,z] = sphere(20);
+figure
+hold on
+%plot3($eci_hist(1,:),$eci_hist(2,:),$eci_hist(3,:),'linewidth',5)
+%a = $x_vec(1)
+for i = 1:length($x_vec)
+    a = $x_vec(i);
+    a = a{1};
+    plot3(a(1,:),a(2,:),a(3,:))
+end
+plot3($r1(1),$r1(2),$r1(3),'r*','markersize',18)
+plot3($r2(1),$r2(2),$r2(3),'r*','markersize',18)
+axis equal
+surf($R_EARTH*x,$R_EARTH*y,$R_EARTH*z)
+hold off
+"
 
 
 @show "yes"

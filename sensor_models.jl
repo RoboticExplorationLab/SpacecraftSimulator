@@ -108,7 +108,7 @@ function measurements(truth::truth_state_struct,orb_ind::Int,index_n::Int)
                       deg2rad(params.sensors.sun_sensor.noise_std_deg))
 
     # generate magnetometer
-    true_B_body = normalize(truth.B_body[index_n])
+    true_B_body = copy((truth.B_body[index_n]))
     magnetometer_offset = params.sensors.offsets.magnetometer
     meas_B_body = S03_noise(magnetometer_offset*true_B_body,
                       deg2rad(params.sensors.magnetometer.noise_std_deg))

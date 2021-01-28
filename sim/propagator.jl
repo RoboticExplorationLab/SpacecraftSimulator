@@ -11,7 +11,6 @@ using Infiltrator
 const SD = SatelliteDynamics
 
 
-
 # load in the julia and python functions
 ss_sim_path =  dirname(dirname(@__FILE__))
 include(joinpath(ss_sim_path,"load_julia_functions.jl"))
@@ -37,7 +36,7 @@ function sim_driver(path_to_yaml)
     MEKF = initialize_mekf_struct(time_params)
 
     # MEKF
-    initialize_mekf!(MEKF,truth)
+    # initialize_mekf!(MEKF,truth)
 
     # triad
     q_triad = fill(zeros(4),length(time_params.t_vec_attitude))
@@ -62,6 +61,8 @@ function sim_driver(path_to_yaml)
             # generate measurements
             sensors_update!(sensors, truth,orb_ind,index_n)
 
+            # @infiltrate
+            # error()
             # disturbance torques
             τ = zeros(3)
 
@@ -135,7 +136,7 @@ sim_output = sim_driver(path_to_yaml)
 #
 # q = mat_from_vec(sim_output.truth.ᴺqᴮ)
 ω = mat_from_vec(sim_output.truth.ω)
-
+ω_gyro = mat_from_vec(sim_output.sensors.ω)
 ωnorm = rad2deg.([norm(sim_output.truth.ω[i]) for i = 1:length(sim_output.truth.ω)])
 
 tva = sim_output.t_vec_attitude
@@ -163,6 +164,17 @@ mat"
 figure
 hold on
 plot($ω')
+plot($ω_gyro')
+hold off
+"
+
+B_real = mat_from_vec(sim_output.truth.B_body)
+B_est = mat_from_vec(sim_output.sensors.B_body)
+mat"
+figure
+hold on
+plot($B_real')
+plot($B_est')
 hold off
 "
 #

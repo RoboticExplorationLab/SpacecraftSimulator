@@ -25,7 +25,7 @@ function bdot_control_law(ω,max_dipoles,B_body_T,eclipse)
     bdot = -cross(ω,B_body_T)
 
     # bang-bang control law
-    m = (!eclipse)*(-max_dipoles .* tanh.(1e4*bdot))
+    m = (!eclipse)*(-max_dipoles .* tanh.(1e5*bdot))
 
     return m
 
