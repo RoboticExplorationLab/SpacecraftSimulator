@@ -5,6 +5,7 @@ import pdb
 import math
 import numpy as np
 import string
+import cvxpy
 
 
 def jd_from_tle(line1):

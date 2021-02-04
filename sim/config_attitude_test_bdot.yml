@@ -44,7 +44,7 @@ propagator_parameters:
   dt_orbital:      10.0                      # sec
   dt_attitude:     0.1                      # sec
   dt_controller:   0.05                       # sec
-  final_time_days: 0.2                     # days
+  final_time_days: 0.8                     # days
 
 inertia_properties:
   sample_new:       false
@@ -56,7 +56,7 @@ sensor_properties:
     rotate_std_deg: 0.0
     noise_std_degps: 0.22
     initial_bias_deg: 2.0
-    bias_noise_std: 1e-2
+    bias_noise_std: 0 #1e-2
   sun_sensor:
     rotate_std_deg: 0.0
     noise_std_deg: 5.0
