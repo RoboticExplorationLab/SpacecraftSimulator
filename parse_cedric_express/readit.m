@@ -28,4 +28,21 @@ vr3xballoontrackerdata = readtable("/Users/kevintracy/Downloads/vr3x-balloon-tra
 %% Clear temporary variables
 clear opts
 
-DATA = vr3xballoontrackerdata
+DATA = vr3xballoontrackerdata;
+
+%% separate 
+
+adam.data = DATA(1:2821,:);
+
+alex.data = DATA(2822:4937,:);
+
+anh.data = DATA(4938:6273,:);
+
+baloon.data = DATA(6274:16112,:);
+
+cedric.data = DATA(16113:18288,:);
+
+kevin.data = DATA(18289:end,:);
+
+C = {adam,alex,anh,baloon,cedric,kevin};
+

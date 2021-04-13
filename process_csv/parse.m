@@ -39,7 +39,7 @@ time = (time - time(1));
 gps_range = dist
 raw_range = range
 tow = time
-save('max.mat','gps_range','raw_range','tow')
+% save('max.mat','gps_range','raw_range','tow')
 
 %%
 % figure
