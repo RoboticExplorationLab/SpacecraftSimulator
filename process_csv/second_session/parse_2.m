@@ -215,3 +215,64 @@ ylabel('GPS Distance (m)')
 
 hold off 
 % saveas(gcf,'colorplot.png')
+
+%% least squares for affine fit 
+
+t_B = (time2 - time(1))/(60);
+t_D = (time - time(1))/(60);
+lsx_B = range2 ;
+lsx_D = range;
+lsy = dist;
+
+% figure
+% hold on 
+% plot(t_D,lsx_D)
+% plot(t_B,lsx_B)
+% hold off 
+
+
+% trim after 2.5 
+Dtrim = (t_D<2.5);
+Btrim = (t_B<2.5);
+
+t_D(Dtrim) = [];
+t_B(Btrim) = [];
+lsx_D(Dtrim) = [];
+lsx_B(Btrim) = [];
+
+% figure
+% hold on 
+% plot(t_D,lsx_D)
+% plot(t_B,lsx_B)
+% hold off 
+
+
+% lsx_B = smoothdata(lsx_B);
+% lsx_D = smoothdata(lsx_D);
+
+A_B = [lsx_B ones(length(lsx_B),1)];
+A_D = [lsx_D ones(length(lsx_D),1)];
+
+x = (time- time(1))/(60);
+y = dist;
+
+y_B = spline(x,y,t_B);
+y_D = spline(x,y,t_D);
+
+xx = [A_B;A_D]\[y_B;y_D];
+% xx = A_B\y_B;
+
+figure
+hold on 
+plot(t_B,xx(1)*lsx_B + xx(2))
+plot(t_D,xx(1)*lsx_D + xx(2))
+plot(x,y)
+hold off 
+
+% %%
+% figure
+% hold on 
+% plot(t_B,smoothdata(lsx_B))
+% hold off 
+
+
