@@ -24,16 +24,15 @@ for i = 1:length(idxs)
     idx = idxs(i);
     
     % location of B
-    ecef_B = [ECEFX001m1(idx-1),ECEFY001m1(idx-1),ECEFZ001m1(idx-1)]/100;
+    ecef_B = B.og.ecef(:,idx-1)/100;
     satsinfix(i) = SVinFix1(idx-1);
-    dist(i) = norm(ecef_A - ecef_B);
+    B.dist(i) = norm(ecef_ - ecef_B);
     
     % raw range measurement 
-    range(i) = Rangeraw(idx);
+    B.range(i) = B.og.range(idx);
     
     % time 
     time(i) = TimeofWeek001s1(idx-1)/100;
-%     time2(i) = TimeofWeek001s(idx-1)/100;
 end
 
 

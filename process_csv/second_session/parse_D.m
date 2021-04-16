@@ -45,3 +45,13 @@ RawRange1 = tbl.RawRange1;
 feeD = tbl.feeD;
 %% Clear temporary variables
 clear opts tbl
+
+for i = 1:length(ECEFX001m)
+    D.og.ecef(:,i) = [ECEFX001m(i);ECEFY001m(i);ECEFZ001m(i)];
+end
+D.og.range= RawRange1;
+D.og.FEE = feeD;
+D.og.SV = SVinFix;
+D.og.time = TimeofWeek001s;
+
+clearvars -except B D
