@@ -1,5 +1,15 @@
 clear
 
+%%
+% 
+% x = 0:.1:20;
+% y = sin(x);
+% figure
+% hold on 
+% boundedline(x,y,.1)
+% hold off 
+%%
+
 B = parseB();
 
 t_vec = linspace(5.04e5,5.05e5,1000);
@@ -18,17 +28,15 @@ ecef_mat((diff(ecef_mat(:,1)) == 0 ),:) = [];
 B.ecef.time = ecef_mat(:,1)/100;
 B.ecef.data = ecef_mat(:,2:4)'/100;
 
-% figure
-% hold on 
-% plot(B.ecef.time,B.ecef.data(1,:))
-% hold off 
 
+%%
 B.interp.time = t_vec;
 B.interp.ecef(1,:) = spline(B.ecef.time,B.ecef.data(1,:),t_vec);
 B.interp.ecef(2,:) = spline(B.ecef.time,B.ecef.data(2,:),t_vec);
 B.interp.ecef(3,:) = spline(B.ecef.time,B.ecef.data(3,:),t_vec);
 
-ecef_A = [-270137265,	-429420935,	385286916]'/100;
+% ecef_A = [-270137265,	-429420935,	385286916]'/100;
+ecef_A = B.ecef.data(:,608); % I chose this visually
 ecef_C = [-270668368,	-429743088,	384652272]'/100;
 ecef_D = [-270831340,	-429305807,	385001248]'/100;
 ecef_E = [-270322037,	-429590411,	384989518]'/100;
@@ -45,31 +53,20 @@ for i = 1:size(B.interp.ecef,2)
     Arange(i) = norm(ecef_A - r);
 end
 
-% figure
-% hold on 
-% plot(t_vec,Erange)
-% hold off 
-
-% E = parseE();
-
-% figure
-% hold on 
-% plot(E.interp.time,E.interp.range)
-% hold off 
 
 %% least squares 
 
 E = parseE();
-performLS(Erange,E,'Ranging Calibration (B + E)','BE.png')
-
+performLS(Erange,E,'Ranging Calibration (B + E)','BE.svg')
+% error()
 C = parseC();
-performLS(Crange,C,'Ranging Calibration (B + C)','BC.png')
+performLS(Crange,C,'Ranging Calibration (B + C)','BC.svg')
 
 D = parseD();
-performLS(Drange,D,'Ranging Calibration (B + D)','BD.png')
+performLS(Drange,D,'Ranging Calibration (B + D)','BD.svg')
 
 A = parseA();
-performLS(Arange,A,'Ranging Calibration (B + A)','BA.png')
+performLS(Arange,A,'Ranging Calibration (B + A)','BA.svg')
 
 
 
@@ -81,18 +78,40 @@ E_coeffs = [E.interp.range ones(1000,1) ]\Erange;
 e = [E.interp.range ones(1000,1) ]*E_coeffs - Erange;
 display(filename)
 RMS  = sqrt( mean ( e .* e ) )
-close all
+E_coeffs
+% close all
 figure
 hold on 
+pltsigma = sqrt(2)*2.5*2.0789; % meters
+% pltsigma = sqrt(2)*2.5*2.89; % meters
 % title('Ranging Calibration (B + E)')
-title(titlename)
-plot(E.interp.time,Erange)
-plot(E.interp.time,E_coeffs(1)*E.interp.range + E_coeffs(2))
-xlabel('GPS TOW (s)')
-ylabel('Range (m)')
-legend('GPS Distance','Calibrated Range Measurements')
+title(titlename,'FontSize',24)
+newt = (E.interp.time - E.interp.time(1))/60;
+smoothwindow = 20;
+if strcmp(filename,'BA.svg')
+%     plot(newt,Erange,'linewidth',2)
+    [hl, ~]  =boundedline(newt,Erange,pltsigma);
+    hl.LineWidth = 2;
+%     plot(newt,E_coeffs(1)*E.interp.range + E_coeffs(2),'linewidth',2,'Color',[0.8500 0.3250 0.0980])
+    plot(newt,smoothdata(E_coeffs(1)*E.interp.range + E_coeffs(2),'movmedian',smoothwindow),'linewidth',2,'Color',[0.8500 0.3250 0.0980])
+    ylabel('Range (m)','FontSize',14)
+else
+%     plot(newt,Erange/1000,'linewidth',2)
+    [hl, ~]  = boundedline(newt,Erange/1000,pltsigma/1000);
+    hl.LineWidth = 2;
+%     plot(newt,(E_coeffs(1)*E.interp.range + E_coeffs(2))/1000,'linewidth',2,'Color',[0.8500 0.3250 0.0980])
+    plot(newt,smoothdata(E_coeffs(1)*E.interp.range + E_coeffs(2),'movmedian',smoothwindow)/1000,'linewidth',2,'Color',[0.8500 0.3250 0.0980])
+    ylabel('Range (km)','FontSize',14)
+end
+xlabel('Time (minutes)','FontSize',14)
+xlim([newt(1),newt(end)])
+grid on 
+legend('GPS Accuracy 2\sigma','GPS Distance','Calibrated Range','FontSize',18,'Location','best')
+ax = gca(); 
+ax.XAxis.FontSize = 16;
+ax.YAxis.FontSize = 16;
 saveas(gcf,filename)
-% saveas(gcf,'test.png','epsc')
+
 hold off 
 close all
 end
