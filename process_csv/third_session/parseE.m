@@ -1,4 +1,4 @@
-function [E] = parseE()
+function [E] = parseE(t_vec)
 opts = delimitedTextImportOptions("NumVariables", 21);
 
 % Specify range and delimiter
@@ -52,14 +52,26 @@ mat(isnan(mat(:,2)),:) = [];
 % remove duplicate values 
 mat((diff(mat(:,1)) == 0 ),:) = [];
 
-t_vec = linspace(5.04e5,5.05e5,1000);
+% t_vec = linspace(5.04e5,5.05e5,1000);
 
 % convert time to seconds 
 mat(:,1) = mat(:,1)/100;
 
+
 % create interp objects
 B.interp.time = t_vec;
-B.interp.range = vec(spline(mat(:,1),mat(:,2),t_vec));
+figure
+hold on 
+plot(mat(:,2))
+size(mat)
+hold off 
+
+% B.interp.range = vec(spline(mat(:,1),mat(:,2),t_vec));
+B.interp.range = vec(interp1(mat(:,1),mat(:,2),t_vec));
+figure
+hold on 
+plot(B.interp.range)
+hold off 
 
 % get name right
 E = B;

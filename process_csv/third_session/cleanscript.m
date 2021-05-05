@@ -1,5 +1,12 @@
 clear
 
+
+% 74      0x4a
+% 75      0x4b
+% 76      0x4c
+% 77      0x4d
+% 78      0x4e
+
 %%
 % 
 % x = 0:.1:20;
@@ -12,7 +19,7 @@ clear
 
 B = parseB();
 
-t_vec = linspace(5.04e5,5.05e5,1000);
+t_vec = linspace(5.041e5,5.0455e5,1000);
 % tf
 %% create interp objects
 ecef_mat = [B.og.time B.og.ecef'];
@@ -39,7 +46,10 @@ B.interp.ecef(3,:) = spline(B.ecef.time,B.ecef.data(3,:),t_vec);
 ecef_A = B.ecef.data(:,608); % I chose this visually
 ecef_C = [-270668368,	-429743088,	384652272]'/100;
 ecef_D = [-270831340,	-429305807,	385001248]'/100;
-ecef_E = [-270322037,	-429590411,	384989518]'/100;
+% ecef_E = [-270322037,	-429590411,	384989518]'/100;
+lla = [37.3659105824291, -122.180314402498, 279.21]; % deg, deg, meters;
+ecef_E = lla2ecef(lla)';
+
 
 Erange = zeros(size(B.interp.ecef,2),1);
 Crange = zeros(size(B.interp.ecef,2),1);
@@ -47,7 +57,8 @@ Drange = zeros(size(B.interp.ecef,2),1);
 Arange = zeros(size(B.interp.ecef,2),1);
 for i = 1:size(B.interp.ecef,2)
     r = B.interp.ecef(:,i);
-    Erange(i) = norm(vec(ecef_E) - vec(r));
+%     Erange(i) = norm(vec(ecef_E) - vec(r));
+    Erange(i) = norm(ecef_E - r);
     Crange(i) = norm(ecef_C - r);
     Drange(i) = norm(ecef_D - r);
     Arange(i) = norm(ecef_A - r);
@@ -56,51 +67,65 @@ end
 
 %% least squares 
 
-E = parseE();
-performLS(Erange,E,'Ranging Calibration (B + E)','BE.svg')
+% E = parseE(t_vec);
+E = parseE2(t_vec);
+performLS(Erange,E,'Ranging Calibration (B to E)','BE.svg')
+% RMS_tune(Erange,E,'Ranging Calibration (B + E)','BE.svg')
 % error()
-C = parseC();
-performLS(Crange,C,'Ranging Calibration (B + C)','BC.svg')
+C = parseC(t_vec);
+performLS(Crange,C,'Ranging Calibration (C to B)','BC.svg')
 
-D = parseD();
-performLS(Drange,D,'Ranging Calibration (B + D)','BD.svg')
+D = parseD(t_vec);
+performLS(Drange,D,'Ranging Calibration (D to B)','BD.svg')
 
-A = parseA();
-performLS(Arange,A,'Ranging Calibration (B + A)','BA.svg')
+% A = parseA(t_vec);
+% performLS(Arange,A,'Ranging Calibration (B + A)','BA.svg')
 
 
 
 
 
 %% 
+% function [] = RMS_tune(Erange,E,titlename,filename)
+% 
+% for i = 10:1:70
+% smoothwindow = i;
+% E.interp.range = smoothdata(E.interp.range,'movmean',smoothwindow);
+% E_coeffs = [E.interp.range ones(1000,1) ]\Erange;
+% e = [E.interp.range ones(1000,1) ]*E_coeffs - Erange;
+% % display(filename)
+% RMS  = sqrt( mean ( e .* e ) )
+% end
+% end
 function [] = performLS(Erange,E,titlename,filename)
-E_coeffs = [E.interp.range ones(1000,1) ]\Erange;
-e = [E.interp.range ones(1000,1) ]*E_coeffs - Erange;
+smoothwindow = 50;
+E.interp.range = smoothdata(E.interp.range,'movmean',smoothwindow);
+E_coeffs = [E.interp.range ones(length(E.interp.range),1) ]\Erange;
+e = [E.interp.range ones(length(E.interp.range),1) ]*E_coeffs - Erange;
 display(filename)
-RMS  = sqrt( mean ( e .* e ) )
-E_coeffs
+RMS  = sqrt( mean ( e .* e ) );
+E_coeffs;
 % close all
 figure
 hold on 
 pltsigma = sqrt(2)*2.5*2.0789; % meters
 % pltsigma = sqrt(2)*2.5*2.89; % meters
 % title('Ranging Calibration (B + E)')
-title(titlename,'FontSize',24)
+title([titlename '   (RMS = ' num2str(RMS) ')'],'FontSize',24)
 newt = (E.interp.time - E.interp.time(1))/60;
-smoothwindow = 20;
 if strcmp(filename,'BA.svg')
 %     plot(newt,Erange,'linewidth',2)
     [hl, ~]  =boundedline(newt,Erange,pltsigma);
     hl.LineWidth = 2;
-%     plot(newt,E_coeffs(1)*E.interp.range + E_coeffs(2),'linewidth',2,'Color',[0.8500 0.3250 0.0980])
-    plot(newt,smoothdata(E_coeffs(1)*E.interp.range + E_coeffs(2),'movmedian',smoothwindow),'linewidth',2,'Color',[0.8500 0.3250 0.0980])
+    plot(newt,E_coeffs(1)*E.interp.range + E_coeffs(2),'linewidth',2,'Color',[0.8500 0.3250 0.0980])
+%     plot(newt,smoothdata(E_coeffs(1)*E.interp.range + E_coeffs(2),'movmedian',smoothwindow),'linewidth',2,'Color',[0.8500 0.3250 0.0980])
     ylabel('Range (m)','FontSize',14)
 else
 %     plot(newt,Erange/1000,'linewidth',2)
     [hl, ~]  = boundedline(newt,Erange/1000,pltsigma/1000);
     hl.LineWidth = 2;
-%     plot(newt,(E_coeffs(1)*E.interp.range + E_coeffs(2))/1000,'linewidth',2,'Color',[0.8500 0.3250 0.0980])
-    plot(newt,smoothdata(E_coeffs(1)*E.interp.range + E_coeffs(2),'movmedian',smoothwindow)/1000,'linewidth',2,'Color',[0.8500 0.3250 0.0980])
+    plot(newt,(E_coeffs(1)*E.interp.range + E_coeffs(2))/1000,'linewidth',2,'Color',[0.8500 0.3250 0.0980])
+%     plot(newt,smoothdata(E_coeffs(1)*E.interp.range + E_coeffs(2),'movmedian',smoothwindow)/1000,'linewidth',2,'Color',[0.8500 0.3250 0.0980])
     ylabel('Range (km)','FontSize',14)
 end
 xlabel('Time (minutes)','FontSize',14)
@@ -110,10 +135,10 @@ legend('GPS Accuracy 2\sigma','GPS Distance','Calibrated Range','FontSize',18,'L
 ax = gca(); 
 ax.XAxis.FontSize = 16;
 ax.YAxis.FontSize = 16;
-saveas(gcf,filename)
+% saveas(gcf,filename)
 
 hold off 
-close all
+% close all
 end
 
 %% 
