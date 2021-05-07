@@ -46,6 +46,26 @@ B.og.FEE = FrequencyOffset;
 B.og.SV = SVinFix;
 B.og.time = TimeofWeek001s;
 
+
+% B.nu.ecef = B.og.ecef;
+% B.nu.ecef(:,isnan(B.og.ecef(1,:))) = [];
+% B.nu.time = B.og.time;
+% B.nu.time(isnan(B.og.ecef(1,:))) = [];
+% 
+% r0 = B.nu.ecef(:,1);
+% norm(r0)
+% for i = 1:length(B.nu.time)
+%     err(i) = norm(r0 - B.nu.ecef(:,i))/100;
+% end
+% 
+% figure
+% hold on 
+% plot(err)
+% hold off 
+
+
+
+
 mat = [B.og.time B.og.range];
 % remove NaN's
 mat(isnan(mat(:,2)),:) = [];

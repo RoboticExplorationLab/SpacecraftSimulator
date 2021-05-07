@@ -45,6 +45,7 @@ idx = (TargetID == 78);
 B.og.time = TimeofWeek001s(idx);
 B.og.range = RawRange(idx);
 B.og.fee = FrequencyOffset(idx);
+B.og.SV = SVinFix;
 % figure
 % hold on 
 % plot(B.og.time,B.og.fee)

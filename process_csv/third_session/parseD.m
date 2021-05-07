@@ -46,6 +46,102 @@ B.og.FEE = FrequencyOffset;
 B.og.SV = SVinFix;
 B.og.time = TimeofWeek001s;
 
+
+% B.nu.ecef = B.og.ecef;
+% B.nu.ecef(:,isnan(B.og.ecef(1,:))) = [];
+% B.nu.time = B.og.time;
+% B.nu.time(isnan(B.og.ecef(1,:))) = [];
+% B.nu.SVinFix = SVinFix;
+% B.nu.SVinFix(isnan(B.og.ecef(1,:))) = [];
+% r0 = B.nu.ecef(:,1);
+% norm(r0)
+% for i = 1:length(B.nu.time)
+%     err(i) = norm(r0 - B.nu.ecef(:,i))/100;
+% end
+
+% figure
+% hold on 
+% title('Static GPS Deviations','FontSize',24)
+% plot((B.nu.time - B.nu.time(1))/(60*100),err,'linewidth',2)
+% grid on
+% xlabel('Time (minutes)')
+% ylabel('Distance From First Measurement (m)')
+% ax = gca(); 
+% ax.XAxis.FontSize = 16;
+% ax.YAxis.FontSize = 16;
+% % saveas(gcf,'gps_errors.svg')
+% hold off 
+% 
+% figure
+% hold on 
+% title('Satellites in Fix for Static Deviations','FontSize',24)
+% plot((B.nu.time - B.nu.time(1))/(60*100),B.nu.SVinFix,'linewidth',2)
+% grid on
+% xlabel('Time (minutes)')
+% ylabel('Distance From First Measurement (m)')
+% ax = gca(); 
+% ax.XAxis.FontSize = 16;
+% ax.YAxis.FontSize = 16;
+% % saveas(gcf,'gps_errors.svg')
+% hold off 
+
+
+% 
+% xx = (B.nu.time - B.nu.time(1))/(60*100);
+% figure
+% set(gca,'FontSize',16)
+% hold on 
+% ax = gca(); 
+% ax.XAxis.FontSize = 16;
+% ax.YAxis.FontSize = 16;
+% sg = sgtitle('Static GPS Performance');
+% sg.FontSize = 24
+% title('test')
+% subplot(2,1,1)
+% % set(gca,'FontSize',16)
+% plot((B.nu.time - B.nu.time(1))/(60*100),err,'linewidth',2)
+% grid on
+% xlabel('Time (minutes)')
+% ylabel('\Delta Position (m)')
+% xlim([xx(1),xx(end)])
+% % ax = gca(); 
+% % ax.XAxis.FontSize = 16;
+% % ax.YAxis.FontSize = 16;
+% ax = gca(); 
+% ax.XAxis.FontSize = 16;
+% ax.YAxis.FontSize = 16;
+% 
+% subplot(2,1,2)
+% hold on 
+% plot((B.nu.time - B.nu.time(1))/(60*100),B.nu.SVinFix,'linewidth',2)
+% grid on
+% xlabel('Time (minutes)')
+% ylabel('Satellites in Fix')
+% ax = gca(); 
+% ax.XAxis.FontSize = 16;
+% ax.YAxis.FontSize = 16;
+% xlim([xx(1),xx(end)])
+% yticks([8 9 10 11 12])
+% % set(findall(gcf,'-property','FontSize'),'FontSize',16)
+% % fh = findall(0,'Type','Figure');
+% % set( findall(fh, '-property', 'fontsize'), 'fontsize', 14)
+% hold off
+% saveas(gcf,'gps_errors2.svg')
+% % ax = gca(); 
+% % ax.XAxis.FontSize = 16;
+% % ax.YAxis.FontSize = 16;
+
+
+
+
+
+
+
+
+
+
+
+
 mat = [B.og.time B.og.range];
 % remove NaN's
 mat(isnan(mat(:,2)),:) = [];

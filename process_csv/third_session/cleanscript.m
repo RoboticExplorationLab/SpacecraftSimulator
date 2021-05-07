@@ -69,17 +69,18 @@ end
 
 % E = parseE(t_vec);
 E = parseE2(t_vec);
-performLS(Erange,E,'Ranging Calibration (B to E)','BE.svg')
+filetype = '.svg';
+performLS(Erange,E,'Ranging Calibration (B to E)',['BE' filetype])
 % RMS_tune(Erange,E,'Ranging Calibration (B + E)','BE.svg')
 % error()
 C = parseC(t_vec);
-performLS(Crange,C,'Ranging Calibration (C to B)','BC.svg')
+performLS(Crange,C,'Ranging Calibration (C to B)',['BC' filetype])
 
 D = parseD(t_vec);
-performLS(Drange,D,'Ranging Calibration (D to B)','BD.svg')
+performLS(Drange,D,'Ranging Calibration (D to B)',['BD' filetype])
 
-% A = parseA(t_vec);
-% performLS(Arange,A,'Ranging Calibration (B + A)','BA.svg')
+A = parseA(t_vec);
+performLS(Arange,A,'Ranging Calibration (B + A)',['BA' filetype])
 
 
 
@@ -105,13 +106,13 @@ e = [E.interp.range ones(length(E.interp.range),1) ]*E_coeffs - Erange;
 display(filename)
 RMS  = sqrt( mean ( e .* e ) );
 E_coeffs;
-% close all
+close all
 figure
 hold on 
-pltsigma = sqrt(2)*2.5*2.0789; % meters
-% pltsigma = sqrt(2)*2.5*2.89; % meters
+% pltsigma = sqrt(2)*2.5*2.0789; % meters
+pltsigma = sqrt(2)*2.5*2.89; % meters
 % title('Ranging Calibration (B + E)')
-title([titlename '   (RMS = ' num2str(RMS) ')'],'FontSize',24)
+title([titlename '   (RMS = ' num2str(RMS) 'm)'],'FontSize',24)
 newt = (E.interp.time - E.interp.time(1))/60;
 if strcmp(filename,'BA.svg')
 %     plot(newt,Erange,'linewidth',2)
@@ -131,14 +132,14 @@ end
 xlabel('Time (minutes)','FontSize',14)
 xlim([newt(1),newt(end)])
 grid on 
-legend('GPS Accuracy 2\sigma','GPS Distance','Calibrated Range','FontSize',18,'Location','best')
+legend('GPS Accuracy 3\sigma','GPS Distance','Calibrated Range','FontSize',18,'Location','best')
 ax = gca(); 
 ax.XAxis.FontSize = 16;
 ax.YAxis.FontSize = 16;
-% saveas(gcf,filename)
+saveas(gcf,filename)
 
 hold off 
-% close all
+close all
 end
 
 %% 
