@@ -7,12 +7,19 @@ clear
 % 77      0x4d
 % 78      0x4e
 
-
+%%
+% 
+% x = 0:.1:20;
+% y = sin(x);
+% figure
+% hold on 
+% boundedline(x,y,.1)
+% hold off 
 %%
 
 B = parseB();
 
-t_vec = linspace(5.041e5,5.0455e5,1000);
+t_vec = linspace(5.035e5,5.052e5,3778);
 % tf
 %% create interp objects
 ecef_mat = [B.og.time B.og.ecef'];
@@ -61,19 +68,21 @@ end
 %% least squares 
 
 % E = parseE(t_vec);
+load coeffs.mat coef1 coef2 coef3 coef4 
+
 E = parseE2(t_vec);
 filetype = '.svg';
-performLS(Erange,E,'Ranging Calibration (B to E)',['BE' filetype])
+performLS(Erange,E,'Ranging Calibration (B to E)',['BE_full' filetype],coef1)
 % RMS_tune(Erange,E,'Ranging Calibration (B + E)','BE.svg')
 % error()
 C = parseC(t_vec);
-performLS(Crange,C,'Ranging Calibration (C to B)',['BC' filetype])
+performLS(Crange,C,'Ranging Calibration (C to B)',['BC_full' filetype],coef2)
 
 D = parseD(t_vec);
-performLS(Drange,D,'Ranging Calibration (D to B)',['BD' filetype])
+performLS(Drange,D,'Ranging Calibration (D to B)',['BD_full' filetype],coef3)
 
 A = parseA(t_vec);
-performLS(Arange,A,'Ranging Calibration (B + A)',['BA' filetype])
+performLS(Arange,A,'Ranging Calibration (B + A)',['BA_full' filetype],coef4)
 
 
 
@@ -91,15 +100,15 @@ performLS(Arange,A,'Ranging Calibration (B + A)',['BA' filetype])
 % RMS  = sqrt( mean ( e .* e ) )
 % end
 % end
-function [] = performLS(Erange,E,titlename,filename)
+function [] = performLS(Erange,E,titlename,filename,E_coeffs)
 smoothwindow = 50;
 E.interp.range = smoothdata(E.interp.range,'movmean',smoothwindow);
-E_coeffs = [E.interp.range ones(length(E.interp.range),1) ]\Erange;
+% E_coeffs = [E.interp.range ones(length(E.interp.range),1) ]\Erange;
 e = [E.interp.range ones(length(E.interp.range),1) ]*E_coeffs - Erange;
 display(filename)
 RMS  = sqrt( mean ( e .* e ) );
 E_coeffs;
-close all
+% close all
 figure
 hold on 
 % pltsigma = sqrt(2)*2.5*2.0789; % meters

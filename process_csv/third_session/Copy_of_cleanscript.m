@@ -63,20 +63,20 @@ end
 % E = parseE(t_vec);
 E = parseE2(t_vec);
 filetype = '.svg';
-performLS(Erange,E,'Ranging Calibration (B to E)',['BE' filetype])
+coef1 = performLS(Erange,E,'Ranging Calibration (B to E)',['BE' filetype]);
 % RMS_tune(Erange,E,'Ranging Calibration (B + E)','BE.svg')
 % error()
 C = parseC(t_vec);
-performLS(Crange,C,'Ranging Calibration (C to B)',['BC' filetype])
+coef2 = performLS(Crange,C,'Ranging Calibration (C to B)',['BC' filetype]);
 
 D = parseD(t_vec);
-performLS(Drange,D,'Ranging Calibration (D to B)',['BD' filetype])
+coef3 = performLS(Drange,D,'Ranging Calibration (D to B)',['BD' filetype]);
 
 A = parseA(t_vec);
-performLS(Arange,A,'Ranging Calibration (B + A)',['BA' filetype])
+coef4 = performLS(Arange,A,'Ranging Calibration (B + A)',['BA' filetype]);
 
 
-
+save coeffs.mat coef1 coef2 coef3 coef4 
 
 
 %% 
@@ -91,10 +91,13 @@ performLS(Arange,A,'Ranging Calibration (B + A)',['BA' filetype])
 % RMS  = sqrt( mean ( e .* e ) )
 % end
 % end
-function [] = performLS(Erange,E,titlename,filename)
+function [E_coeffs] = performLS(Erange,E,titlename,filename)
 smoothwindow = 50;
 E.interp.range = smoothdata(E.interp.range,'movmean',smoothwindow);
+
+
 E_coeffs = [E.interp.range ones(length(E.interp.range),1) ]\Erange;
+
 e = [E.interp.range ones(length(E.interp.range),1) ]*E_coeffs - Erange;
 display(filename)
 RMS  = sqrt( mean ( e .* e ) );
