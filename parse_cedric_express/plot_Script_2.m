@@ -41,58 +41,58 @@ for i = 1:length(C)
 end
             
 %%
-% figure
-% hold on 
-% for i = 1:length(C)
-% %     C{i}.t = C{i}.data(:,1);
-% %     plot(C{i}.t,C{i}.data(:,5)
-% long = C{i}.data(:,6);
-% lat = C{i}.data(:,5);
-% 
-% size(long)
-% size(lat)
-% plot(long,lat)
-% % plot(1:20,randn(20,1))
-% % plot(C{i}.data(:,6),C{i}.data(:,5))
-% end
-% legend(names)
-% hold off 
+figure
+hold on 
+for i = 1:length(C)
+%     C{i}.t = C{i}.data(:,1);
+%     plot(C{i}.t,C{i}.data(:,5)
+long = C{i}.data(:,6);
+lat = C{i}.data(:,5);
+
+size(long)
+size(lat)
+plot(long,lat)
+% plot(1:20,randn(20,1))
+% plot(C{i}.data(:,6),C{i}.data(:,5))
+end
+legend(names)
+hold off 
 
 
-% for i = 1:length(C)
-%     D = C{i};
-%     t = D.t;
-%     long = C{i}.data(:,6);
-%     lat = C{i}.data(:,5);
+for i = 1:length(C)
+    D = C{i};
+    t = D.t;
+    long = C{i}.data(:,6);
+    lat = C{i}.data(:,5);
     
-% figure
-% hold on 
-% plot(t,lat,'o')
-% % plot(t,long)
-% title(names(i))
-% hold off 
-% end
+figure
+hold on 
+plot(t,lat,'o')
+% plot(t,long)
+title(names(i))
+hold off 
+end
 
 
 %%
-% 
-% figure
-% hold on 
-% for i = 1:length(C)
-% %     C{i}.t = C{i}.data(:,1);
-% %     plot(C{i}.t,C{i}.data(:,5)
-% t = C{i}.t;
-% long = C{i}.data(:,6);
-% lat = C{i}.data(:,5);
-% 
-% size(long)
-% size(lat)
-% plot(t,lat,'o')
-% % plot(1:20,randn(20,1))
-% % plot(C{i}.data(:,6),C{i}.data(:,5))
-% end
-% legend(names)
-% hold off 
+
+figure
+hold on 
+for i = 1:length(C)
+%     C{i}.t = C{i}.data(:,1);
+%     plot(C{i}.t,C{i}.data(:,5)
+t = C{i}.t;
+long = C{i}.data(:,6);
+lat = C{i}.data(:,5);
+
+size(long)
+size(lat)
+plot(t,lat,'o')
+% plot(1:20,randn(20,1))
+% plot(C{i}.data(:,6),C{i}.data(:,5))
+end
+legend(names)
+hold off 
 
 
 
@@ -198,36 +198,13 @@ OUTDATA = [t kevin_range alex_range adam_range cedric_range];
 
 
 %%
-% balloon_alt = C{4}.data(:,7);
-% figure
-% hold on 
-% plot([0;t + 8],[431.9;balloon_alt]/1000,'linewidth',2)
-% grid on 
-% ylabel('Altitude (km)')
-% xlabel('Flight Time (min)')
-% hold off
-% saveas(gcf,'altplot.png')
-% % saveas(gcf,'altplot.eps','epsc')
-
-
-
-% function [x,y,z]=lla2ecef(lat,lon,alt)
-function [d]=lla2ecef(p)
-lat = p(1);
-lon = p(2);
-alt = p(3);
-
-% WGS84 ellipsoid constants:
-a = 6378137;
-e = 8.1819190842622e-2;
-
-% intermediate calculation
-% (prime vertical radius of curvature)
-N = a ./ sqrt(1 - e^2 .* sin(lat).^2);
-
-% results:
-x = (N+alt) .* cos(lat) .* cos(lon);
-y = (N+alt) .* cos(lat) .* sin(lon);
-z = ((1-e^2) .* N + alt) .* sin(lat);
-d = [x;y;z];
-end
+balloon_alt = C{4}.data(:,7);
+figure
+hold on 
+plot([0;t + 8],[431.9;balloon_alt]/1000,'linewidth',2)
+grid on 
+ylabel('Altitude (km)')
+xlabel('Flight Time (min)')
+hold off
+saveas(gcf,'altplot.png')
+% saveas(gcf,'altplot.eps','epsc')
